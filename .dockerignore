@@ -1,3 +1,7 @@
+# Git
+.git
+.gitignore
+
 # Python
 __pycache__/
 *.py[cod]
@@ -20,31 +24,11 @@ wheels/
 .installed.cfg
 *.egg
 
-# Python cache directories
-.pytest_cache/
-.coverage
-*.cover
-.hypothesis/
-nosetests.xml
-.tox/
-.cache/
-*.pyc
-
 # Virtual environments
 venv/
-venv
+env/
+ENV/
 cloudleakage_venv/
-
-
-# Flask
-instance/
-.webassets-cache
-
-# Database (commented out - we need these files for the application)
-# *.db
-# *.sqlite
-# *.sqlite3
-# cloudleakage.db
 
 # IDE
 .vscode/
@@ -65,10 +49,34 @@ Thumbs.db
 *.log
 
 # Environment variables
-# .env  # Commented out - we want to track .env file
+.env
 .env.local
 .env.production
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+docker/
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md
+docs/
 
 # Temporary files
 *.tmp
 *.temp
+
+# Testing
+.pytest_cache/
+.coverage
+*.cover
+.hypothesis/
+nosetests.xml
+.tox/
+.cache/
