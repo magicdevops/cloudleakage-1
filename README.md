@@ -32,19 +32,33 @@ A comprehensive Flask-based web application for monitoring, analyzing, and optim
 - Python 3.8+
 - AWS Account with appropriate permissions
 - Modern web browser
+- **Docker** (recommended for easy PostgreSQL setup)
 
 ### Installation
 
-1. **Clone and Setup**
+#### Option 1: Docker Setup (Recommended)
 ```bash
+# 1. Copy environment configuration
+cp .env.example .env
+
+# 2. Start PostgreSQL with Docker
+cd docker
+docker-compose up -d postgres
+
+# 3. Run application (connects to PostgreSQL automatically)
+cd ..
+python app.py
+```
+
+#### Option 2: Traditional Setup
+```bash
+# 1. Clone and Setup
 cd /home/ubuntu/LocalAWS_CodeBuild/repos/cloudleakage
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
 
-2. **Run the Application**
-```bash
+# 2. Run the Application
 python app.py
 ```
 
@@ -57,57 +71,31 @@ python app.py
 
 ## 🗄️ Database Setup
 
-CloudLeakage supports multiple database backends for flexible deployment options:
+CloudLeakage automatically detects and uses the best available database:
 
-### SQLite (Default - Development)
+### PostgreSQL (Docker - Production & Development)
 ```bash
-# No additional setup required
-# Database file 'cloudleakage.db' created automatically
+# 1. Start PostgreSQL container (recommended)
+cd docker
+docker-compose up -d postgres
+
+# 2. Application automatically connects with these credentials:
+# DATABASE_URL=postgresql://app_user:app_pass@localhost:5432/cloudleakage
+
+# 3. Run application
+cd ..
 python app.py
 ```
 
-### PostgreSQL (Production Recommended)
+**Database Connection:**
+- **Host**: `localhost:5432`
+- **Database**: `cloudleakage`
+- **User**: `app_user`
+- **Password**: `app_pass`
+
+### SQLite (Development - No Setup Required)
 ```bash
-# 1. Install PostgreSQL
-sudo apt-get install postgresql postgresql-contrib libpq-dev
-
-# 2. Create database and user
-sudo -u postgres psql
-CREATE DATABASE cloudleakage;
-CREATE USER cloudleakage_user WITH PASSWORD 'secure_password';
-GRANT ALL PRIVILEGES ON DATABASE cloudleakage TO cloudleakage_user;
-\q
-
-# 3. Install Python dependencies
-pip install psycopg2-binary
-
-# 4. Set environment variable
-export DATABASE_URL="postgresql://cloudleakage_user:secure_password@localhost:5432/cloudleakage"
-
-# 5. Run application
-python app.py
-```
-
-### MySQL (Production Alternative)
-```bash
-# 1. Install MySQL
-sudo apt-get install mysql-server libmysqlclient-dev
-
-# 2. Create database and user
-sudo mysql
-CREATE DATABASE cloudleakage;
-CREATE USER 'cloudleakage_user'@'localhost' IDENTIFIED BY 'secure_password';
-GRANT ALL PRIVILEGES ON cloudleakage.* TO 'cloudleakage_user'@'localhost';
-FLUSH PRIVILEGES;
-EXIT;
-
-# 3. Install Python dependencies
-pip install mysqlclient
-
-# 4. Set environment variable
-export DATABASE_URL="mysql://cloudleakage_user:secure_password@localhost:3306/cloudleakage"
-
-# 5. Run application
+# Application automatically creates cloudleakage.db
 python app.py
 ```
 
@@ -124,12 +112,40 @@ The application automatically creates these tables:
 ```bash
 # Required for production
 export ENCRYPTION_KEY="your-32-byte-base64-encoded-key"
-export DATABASE_URL="your-database-connection-string"
 export SECRET_KEY="your-flask-secret-key"
 
-# Required for Terraform Analyzer (Gemini Integration)
+# Optional: Gemini API for Terraform Analyzer
 export GEMINI_API_KEY="your-google-ai-studio-api-key"
 ```
+
+## 🐳 Docker Setup
+
+For the complete Docker and PostgreSQL setup guide, see:
+- **`docker/README.md`** - Docker setup and management
+- **`docs/DOCKER_POSTGRESQL_SETUP.md`** - Complete Docker deployment guide
+
+### Quick Docker Commands
+```bash
+# Start PostgreSQL container
+cd docker && docker-compose up -d postgres
+
+# View logs
+docker-compose logs -f postgres
+
+# Stop database
+docker-compose down postgres
+
+# Run application (connects automatically)
+cd .. && python app.py
+```
+
+## 📚 Documentation
+
+For comprehensive documentation, see the `docs/` directory:
+- **`docs/README.md`** - Complete documentation index
+- **`docs/database_setup.md`** - Database configuration guide
+- **`docs/aws_iam_permissions.md`** - AWS permissions and security
+- **`docs/production_checklist.md`** - Production deployment guide
 
 ## Application Structure
 
@@ -138,8 +154,21 @@ cloudleakage/
 ├── app.py                          # Main Flask application
 ├── requirements.txt                # Python dependencies
 ├── README.md                       # This file
-├── DATABASE_SETUP.md               # Database configuration guide
-├── POLLING_AND_CACHING_README.md   # Polling and caching architecture guide
+├── .env.example                    # Environment configuration template
+├── .gitignore                      # Git ignore patterns
+├── setup_docker.sh                 # Docker setup script
+├── setup_and_run.sh                # Traditional setup script
+├── docker/                         # Docker configuration
+│   ├── docker-compose.yml          # Docker services (PostgreSQL, Redis)
+│   ├── Dockerfile                  # Application container definition
+│   ├── README.md                   # Docker setup documentation
+│   └── init-scripts/               # Database initialization scripts
+├── docs/                           # Documentation directory
+│   ├── README.md                   # Main documentation index
+│   ├── DOCKER_POSTGRESQL_SETUP.md  # Complete Docker setup guide
+│   ├── database_setup.md           # Database configuration
+│   ├── aws_iam_permissions.md      # AWS permissions guide
+│   └── [other documentation...]
 ├── cloudleakage.db                 # SQLite database (auto-created)
 ├── app/                            # Main application package
 │   ├── __init__.py                 # Package initialization

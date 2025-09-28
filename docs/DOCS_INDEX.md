@@ -5,7 +5,7 @@ This directory contains all documentation files for the CloudLeakage project.
 ## 📁 Documentation Structure
 
 ### 🚀 **Setup & Installation**
-- **`README.md`** - Main project overview and quick start guide
+- **`../README.md`** - Main project overview and quick start guide (in root directory)
 - **`DOCKER_POSTGRESQL_SETUP.md`** - Complete Docker and PostgreSQL setup guide
 - **`database_setup.md`** - Database configuration and setup instructions
 
@@ -26,7 +26,7 @@ This directory contains all documentation files for the CloudLeakage project.
 ## 📖 **Reading Guide**
 
 ### **New Users**
-1. Start with **`README.md`** for project overview
+1. Start with **`../README.md`** (in root directory) for project overview
 2. Follow **`DOCKER_POSTGRESQL_SETUP.md`** for setup
 3. Review **`database_setup.md`** for database configuration
 
@@ -43,7 +43,7 @@ This directory contains all documentation files for the CloudLeakage project.
 
 | File | Description |
 |------|-------------|
-| `README.md` | Main project documentation and quick start |
+| `../README.md` | Main project documentation and quick start (in root) |
 | `DOCKER_POSTGRESQL_SETUP.md` | Docker, PostgreSQL, and deployment guide |
 | `database_setup.md` | Database configuration and setup |
 | `database_migration_strategy.md` | Database scaling and migration strategies |
