@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CloudSpend{% endblock %}</title>
+    <link href="{{ url_for('static', filename='css/cloudspend-style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Include Shared Sidebar Component -->
+        {% include 'components/sidebar.html' %}
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area">
+                {% block content %}
+                <div class="header">
+                    <h1 class="header-title">{{ title or 'CloudSpend' }}</h1>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <p>Welcome to CloudSpend - Your AWS Cost Optimization Platform</p>
+                    </div>
+                </div>
+                {% endblock %}
+            </div>
+        </main>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudWatch Dashboard - CloudLeakage</title>
+    <link href="{{ url_for('static', filename='css/cloudspend-style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="icon">☁️</div>
+                    <span>CloudSpend</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <div class="nav-item">
+                        <a href="/" class="nav-link">
+                            <div class="icon"><i class="fas fa-tachometer-alt"></i></div>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">CloudWatch</div>
+                    <div class="nav-item">
+                        <a href="/cloudwatch" class="nav-link active">
+                            <div class="icon"><i class="fas fa-chart-line"></i></div>
+                            <span>CloudWatch Dashboard</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/cloudwatch/insights" class="nav-link">
+                            <div class="icon"><i class="fas fa-brain"></i></div>
+                            <span>AI Insights</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area">
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-title">
+                        <i class="fas fa-chart-line" style="margin-right: 12px; color: var(--primary-blue);"></i>
+                        CloudWatch Dashboard
+                    </div>
+                    <div class="header-actions">
+                        <a href="/cloudwatch/insights" class="btn btn-success" style="margin-right: 8px;">
+                            <i class="fas fa-brain"></i>
+                            AI Insights
+                        </a>
+                        <button onclick="refreshAllData()" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh All Data
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Account & Region Selector - Compact Right Side -->
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+                    <div class="compact-selector-box" style="display: flex; gap: 16px; align-items: center; background: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;">
+                        <div>
+                            <label for="accountSelect" style="display: block; margin-bottom: 4px; font-weight: 600; color: #666; font-size: 12px;">AWS Account:</label>
+                            <select id="accountSelect" onchange="loadAccountData()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 180px;">
+                                <option value="">Loading accounts...</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="regionSelect" style="display: block; margin-bottom: 4px; font-weight: 600; color: #666; font-size: 12px;">Region:</label>
+                            <select id="regionSelect" onchange="loadCloudWatchData()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 150px;">
+                                <option value="">All Regions</option>
+                                <option value="us-east-1">US East (N. Virginia)</option>
+                                <option value="us-east-2">US East (Ohio)</option>
+                                <option value="us-west-1">US West (N. California)</option>
+                                <option value="us-west-2">US West (Oregon)</option>
+                                <option value="eu-west-1">Europe (Ireland)</option>
+                                <option value="eu-west-2">Europe (London)</option>
+                                <option value="eu-central-1">Europe (Frankfurt)</option>
+                                <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                                <option value="ap-southeast-2">Asia Pacific (Sydney)</option>
+                                <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
+                                <option value="ap-south-1">Asia Pacific (Mumbai)</option>
+                                <option value="ca-central-1">Canada (Central)</option>
+                                <option value="sa-east-1">South America (São Paulo)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CloudWatch Metrics Overview -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="totalAlarms">-</div>
+                        <div class="metric-label">Total Alarms</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="alarmingAlarms" style="color: #dc3545;">-</div>
+                        <div class="metric-label">Alarming</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="okAlarms" style="color: #28a745;">-</div>
+                        <div class="metric-label">OK</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="insufficientDataAlarms" style="color: #ffc107;">-</div>
+                        <div class="metric-label">Insufficient Data</div>
+                    </div>
+                </div>
+
+                <!-- Duplicate Alarm Detection -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <i class="fas fa-copy" style="margin-right: 8px; color: var(--danger-red);"></i>
+                                Duplicate Alarm Detection
+                            </h3>
+                            <p class="card-subtitle">Identify and optimize redundant alarms</p>
+                        </div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <button onclick="analyzeDuplicateAlarms()" class="btn btn-primary" id="analyzeDuplicatesBtn">
+                                <i class="fas fa-search"></i>
+                                Analyze Duplicates
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-grid">
+                            <div class="metric-card" style="background: linear-gradient(135deg, #ff7675 0%, #e17055 100%); color: white;">
+                                <div class="metric-value" id="duplicateAlarms">-</div>
+                                <div class="metric-label">Duplicate Alarms</div>
+                                <small style="opacity: 0.8;">Same metric + resource</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%); color: white;">
+                                <div class="metric-value" id="similarThresholds">-</div>
+                                <div class="metric-label">Similar Thresholds</div>
+                                <small style="opacity: 0.8;">Within 10% variance</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); color: white;">
+                                <div class="metric-value" id="redundantActions">-</div>
+                                <div class="metric-label">Redundant Actions</div>
+                                <small style="opacity: 0.8;">Same SNS topics</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #00b894 0%, #00a085 100%); color: white;">
+                                <div class="metric-value" id="potentialSavings">-</div>
+                                <div class="metric-label">Potential Savings</div>
+                                <small style="opacity: 0.8;">Monthly cost reduction</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Duplicate Alarms Analysis -->
+                        <div id="duplicateAnalysisContent" style="margin-top: 20px;">
+                            <div style="text-align: center; padding: 40px; color: #666;">
+                                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
+                                <div>Click "Analyze Duplicates" to detect redundant alarms</div>
+                                <small>This will help optimize your CloudWatch costs</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alarm State Distribution -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <i class="fas fa-exclamation-triangle" style="margin-right: 8px; color: var(--warning-yellow);"></i>
+                                Alarm State Analysis
+                            </h3>
+                            <p class="card-subtitle">Current alarm states and trends</p>
+                        </div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div>
+                                <label for="timeRangeFilter" style="margin-right: 8px; font-weight: 600;">Time Range:</label>
+                                <select id="timeRangeFilter" onchange="filterAlarmHistory()" style="padding: 8px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 14px;">
+                                    <option value="1h">Last Hour</option>
+                                    <option value="6h">Last 6 Hours</option>
+                                    <option value="24h" selected>Last 24 Hours</option>
+                                    <option value="7d">Last 7 Days</option>
+                                    <option value="30d">Last 30 Days</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-grid">
+                            <div class="metric-card" style="background: linear-gradient(135deg, #ff7675 0%, #e17055 100%); color: white;">
+                                <div class="metric-value" id="criticalAlarms">-</div>
+                                <div class="metric-label">Critical Alarms</div>
+                                <small style="opacity: 0.8;">Immediate attention required</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%); color: white;">
+                                <div class="metric-value" id="warningAlarms">-</div>
+                                <div class="metric-label">Warning Alarms</div>
+                                <small style="opacity: 0.8;">Monitor closely</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); color: white;">
+                                <div class="metric-value" id="infoAlarms">-</div>
+                                <div class="metric-label">Info Alarms</div>
+                                <small style="opacity: 0.8;">Informational only</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Alarm History Chart Placeholder -->
+                        <div id="alarmHistoryChart" style="margin-top: 20px; height: 300px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666;">
+                            <div style="text-align: center;">
+                                <i class="fas fa-chart-area" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
+                                <div>Alarm History Chart</div>
+                                <small>Select an account to view alarm trends</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CloudWatch Alarms -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <i class="fas fa-bell" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                                CloudWatch Alarms
+                            </h3>
+                            <p class="card-subtitle">Monitor and manage your CloudWatch alarms</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="syncAlarmData()" class="btn btn-secondary" id="syncBtn">
+                                <i class="fas fa-sync-alt"></i>
+                                Sync Data
+                            </button>
+                            <div class="dropdown" style="position: relative;">
+                                <button onclick="toggleExportDropdown()" class="btn btn-success" id="exportBtn">
+                                    <i class="fas fa-download"></i>
+                                    Export
+                                </button>
+                                <div id="exportDropdown" class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 1000; min-width: 150px;">
+                                    <button onclick="exportData('csv')" class="dropdown-item">
+                                        <i class="fas fa-file-csv"></i>
+                                        Export CSV
+                                    </button>
+                                    <button onclick="exportData('json')" class="dropdown-item">
+                                        <i class="fas fa-file-code"></i>
+                                        Export JSON
+                                    </button>
+                                    <button onclick="exportData('excel')" class="dropdown-item">
+                                        <i class="fas fa-file-excel"></i>
+                                        Export Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="alarmsContent" class="loading">Select an account to view CloudWatch alarms</div>
+                    </div>
+                </div>
+
+                <!-- Metric Insights -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-chart-bar" style="margin-right: 8px; color: var(--success-green);"></i>
+                            Metric Insights
+                        </h3>
+                        <p class="card-subtitle">Top metrics and performance indicators</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-value" id="topCpuMetric">-</div>
+                                <div class="metric-label">Highest CPU Usage</div>
+                                <small id="topCpuInstance" style="color: #666;">-</small>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" id="topMemoryMetric">-</div>
+                                <div class="metric-label">Highest Memory Usage</div>
+                                <small id="topMemoryInstance" style="color: #666;">-</small>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" id="topNetworkMetric">-</div>
+                                <div class="metric-label">Highest Network I/O</div>
+                                <small id="topNetworkInstance" style="color: #666;">-</small>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" id="topDiskMetric">-</div>
+                                <div class="metric-label">Highest Disk I/O</div>
+                                <small id="topDiskInstance" style="color: #666;">-</small>
+                            </div>
+                        </div>
+                        
+                        <div id="metricsInsightsContent" class="loading" style="margin-top: 20px;">Select an account to view metric insights</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentAccountId = null;
+        let alarmsData = [];
+        let metricsData = [];
+        
+        // Load accounts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAccounts();
+        });
+        
+        async function loadAccounts() {
+            try {
+                const response = await fetch('/integration/api/accounts');
+                const data = await response.json();
+                
+                const accountSelect = document.getElementById('accountSelect');
+                accountSelect.innerHTML = '<option value="">Select an account...</option>';
+                
+                if (data.success && data.accounts.length > 0) {
+                    data.accounts.forEach(account => {
+                        const option = document.createElement('option');
+                        option.value = account.id;
+                        option.textContent = `${account.displayName} (${account.provider.toUpperCase()})`;
+                        accountSelect.appendChild(option);
+                    });
+                } else {
+                    accountSelect.innerHTML = '<option value="">No accounts found</option>';
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                document.getElementById('accountSelect').innerHTML = '<option value="">Error loading accounts</option>';
+            }
+        }
+        
+        function loadAccountData() {
+            const accountSelect = document.getElementById('accountSelect');
+            currentAccountId = accountSelect.value;
+            
+            if (currentAccountId) {
+                loadCloudWatchData();
+                loadMetricInsights();
+            } else {
+                resetDashboard();
+            }
+        }
+        
+        async function loadCloudWatchData() {
+            if (!currentAccountId) return;
+            
+            const region = document.getElementById('regionSelect').value;
+            const alarmsContent = document.getElementById('alarmsContent');
+            alarmsContent.innerHTML = '<div class="loading">Loading CloudWatch alarms...</div>';
+            
+            try {
+                const url = `/cloudwatch/api/accounts/${currentAccountId}/alarms${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    alarmsData = data.alarms;
+                    displayAlarms(alarmsData);
+                    updateMetrics();
+                } else {
+                    alarmsContent.innerHTML = `<div class="error-message">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                console.error('Error loading alarms:', error);
+                alarmsContent.innerHTML = '<div class="error-message">Failed to load CloudWatch alarms</div>';
+            }
+        }
+        
+        function displayAlarms(alarms) {
+            const alarmsContent = document.getElementById('alarmsContent');
+            
+            if (alarms.length === 0) {
+                alarmsContent.innerHTML = '<div class="loading">No CloudWatch alarms found</div>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table class="instances-table">
+                    <thead>
+                        <tr>
+                            <th>Alarm Name</th>
+                            <th>State</th>
+                            <th>Metric</th>
+                            <th>Threshold</th>
+                            <th>Region</th>
+                            <th>Last Updated</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            alarms.forEach(alarm => {
+                const stateClass = alarm.state === 'ALARM' ? 'state-alarming' : 
+                                 alarm.state === 'OK' ? 'state-ok' : 'state-insufficient';
+                const lastUpdate = new Date(alarm.stateUpdatedTimestamp).toLocaleString();
+                
+                tableHTML += `
+                    <tr onclick="openAlarmDetails('${alarm.alarmName}')" style="cursor: pointer;">
+                        <td><strong>${alarm.alarmName}</strong></td>
+                        <td><span class="instance-state ${stateClass}">${alarm.state}</span></td>
+                        <td>${alarm.metricName}</td>
+                        <td>${alarm.threshold} ${alarm.comparisonOperator}</td>
+                        <td>${alarm.region}</td>
+                        <td>${lastUpdate}</td>
+                        <td onclick="event.stopPropagation();">
+                            <button class="utilization-btn" onclick="viewAlarmHistory('${alarm.alarmName}')">
+                                📊 History
+                            </button>
+                            <button class="details-btn" onclick="openAlarmDetails('${alarm.alarmName}')">
+                                🔍 Details
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            alarmsContent.innerHTML = tableHTML;
+        }
+        
+        function updateMetrics() {
+            const totalAlarms = alarmsData.length;
+            const alarmingAlarms = alarmsData.filter(a => a.state === 'ALARM').length;
+            const okAlarms = alarmsData.filter(a => a.state === 'OK').length;
+            const insufficientDataAlarms = alarmsData.filter(a => a.state === 'INSUFFICIENT_DATA').length;
+            
+            document.getElementById('totalAlarms').textContent = totalAlarms;
+            document.getElementById('alarmingAlarms').textContent = alarmingAlarms;
+            document.getElementById('okAlarms').textContent = okAlarms;
+            document.getElementById('insufficientDataAlarms').textContent = insufficientDataAlarms;
+            
+            // Update severity metrics (simulated)
+            document.getElementById('criticalAlarms').textContent = Math.floor(alarmingAlarms * 0.3);
+            document.getElementById('warningAlarms').textContent = Math.floor(alarmingAlarms * 0.5);
+            document.getElementById('infoAlarms').textContent = Math.ceil(alarmingAlarms * 0.2);
+        }
+        
+        async function syncAlarmData() {
+            if (!currentAccountId) return;
+            
+            const syncBtn = document.getElementById('syncBtn');
+            syncBtn.textContent = '🔄 Syncing...';
+            syncBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`/cloudwatch/api/accounts/${currentAccountId}/sync`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Successfully synced ${data.alarms_synced} alarms`);
+                    loadCloudWatchData();
+                } else {
+                    alert(`Sync failed: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error syncing data:', error);
+                alert('Failed to sync data');
+            } finally {
+                syncBtn.textContent = '🔄 Sync Data';
+                syncBtn.disabled = false;
+            }
+        }
+        
+        function openAlarmDetails(alarmName) {
+            const alarm = alarmsData.find(a => a.alarmName === alarmName);
+            if (!alarm) return;
+            
+            alert(`Alarm Details for ${alarmName}:\n\n` +
+                  `State: ${alarm.state}\n` +
+                  `Metric: ${alarm.metricName}\n` +
+                  `Threshold: ${alarm.threshold}\n` +
+                  `Description: ${alarm.alarmDescription || 'No description'}`);
+        }
+        
+        function viewAlarmHistory(alarmName) {
+            alert(`Viewing alarm history for: ${alarmName}\n\nThis would show historical state changes and metric data.`);
+        }
+        
+        function refreshAllData() {
+            if (currentAccountId) {
+                loadCloudWatchData();
+                loadMetricInsights();
+            }
+        }
+        
+        async function analyzeDuplicateAlarms() {
+            if (!currentAccountId) {
+                alert('Please select an account first');
+                return;
+            }
+            
+            const analyzeBtn = document.getElementById('analyzeDuplicatesBtn');
+            const originalText = analyzeBtn.innerHTML;
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+            analyzeBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`/cloudwatch/api/accounts/${currentAccountId}/duplicate-analysis`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayDuplicateAnalysis(data.analysis);
+                    updateDuplicateMetrics(data.analysis);
+                } else {
+                    document.getElementById('duplicateAnalysisContent').innerHTML = 
+                        `<div class="error-message">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                console.error('Error analyzing duplicates:', error);
+                document.getElementById('duplicateAnalysisContent').innerHTML = 
+                    '<div class="error-message">Failed to analyze duplicate alarms</div>';
+            } finally {
+                analyzeBtn.innerHTML = originalText;
+                analyzeBtn.disabled = false;
+            }
+        }
+        
+        function displayDuplicateAnalysis(analysis) {
+            const content = document.getElementById('duplicateAnalysisContent');
+            
+            if (analysis.duplicateGroups.length === 0) {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #28a745;">
+                        <i class="fas fa-check-circle" style="font-size: 3rem; margin-bottom: 16px;"></i>
+                        <div><strong>Great! No duplicate alarms detected</strong></div>
+                        <small>Your CloudWatch alarms are well optimized</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="duplicate-groups">';
+            
+            analysis.duplicateGroups.forEach((group, index) => {
+                const severityClass = group.severity === 'high' ? 'danger' : 
+                                    group.severity === 'medium' ? 'warning' : 'info';
+                
+                html += `
+                    <div class="duplicate-group" style="margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                        <div class="duplicate-group-header" style="background: var(--${severityClass}-light); padding: 12px 16px; border-bottom: 1px solid #e0e0e0;">
+                            <div style="display: flex; justify-content: between; align-items: center;">
+                                <div>
+                                    <strong>${group.type}</strong>
+                                    <span class="badge badge-${severityClass}" style="margin-left: 8px;">${group.severity.toUpperCase()}</span>
+                                </div>
+                                <div style="font-size: 14px; color: #666;">
+                                    ${group.alarms.length} alarms • Potential savings: $${group.potentialSavings}/month
+                                </div>
+                            </div>
+                            <div style="margin-top: 4px; font-size: 14px; color: #666;">
+                                ${group.description}
+                            </div>
+                        </div>
+                        <div class="duplicate-group-body" style="padding: 16px;">
+                            <div class="duplicate-alarms-list">
+                `;
+                
+                group.alarms.forEach(alarm => {
+                    html += `
+                        <div class="duplicate-alarm-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 8px; background: #f8f9fa; border-radius: 4px;">
+                            <div>
+                                <strong>${alarm.alarmName}</strong>
+                                <div style="font-size: 12px; color: #666;">
+                                    ${alarm.metricName} | Threshold: ${alarm.threshold} | Region: ${alarm.region}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-sm btn-outline-primary" onclick="viewAlarmHistory('${alarm.alarmName}')">
+                                    <i class="fas fa-chart-line"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteAlarm('${alarm.alarmName}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                            </div>
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                                <button class="btn btn-warning" onclick="showRecommendation('${index}')">
+                                    <i class="fas fa-lightbulb"></i>
+                                    View Recommendation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            content.innerHTML = html;
+        }
+        
+        function updateDuplicateMetrics(analysis) {
+            document.getElementById('duplicateAlarms').textContent = analysis.totalDuplicates;
+            document.getElementById('similarThresholds').textContent = analysis.similarThresholds;
+            document.getElementById('redundantActions').textContent = analysis.redundantActions;
+            document.getElementById('potentialSavings').textContent = `$${analysis.totalSavings}`;
+        }
+        
+        function showRecommendation(groupIndex) {
+            // This would show detailed recommendations for the duplicate group
+            alert(`Recommendation for duplicate group ${groupIndex + 1}:\n\n` +
+                  `1. Keep the most comprehensive alarm\n` +
+                  `2. Remove redundant alarms with similar thresholds\n` +
+                  `3. Consolidate SNS actions where possible\n` +
+                  `4. Consider using composite alarms for complex scenarios`);
+        }
+        
+        function confirmDeleteAlarm(alarmName) {
+            if (confirm(`Are you sure you want to delete alarm "${alarmName}"?\n\nThis action cannot be undone.`)) {
+                // This would call the delete alarm API
+                alert(`Alarm "${alarmName}" would be deleted.\n\nAPI integration needed for actual deletion.`);
+            }
+        }
+        
+        function loadMetricInsights() {
+            // Simulated metric insights
+            document.getElementById('topCpuMetric').textContent = '89.5%';
+            document.getElementById('topCpuInstance').textContent = 'i-1234567890abcdef0';
+            document.getElementById('topMemoryMetric').textContent = '76.2%';
+            document.getElementById('topMemoryInstance').textContent = 'i-0987654321fedcba0';
+            document.getElementById('topNetworkMetric').textContent = '1.2 GB/s';
+            document.getElementById('topNetworkInstance').textContent = 'i-abcdef1234567890';
+            document.getElementById('topDiskMetric').textContent = '450 IOPS';
+            document.getElementById('topDiskInstance').textContent = 'i-fedcba0987654321';
+            
+            document.getElementById('metricsInsightsContent').innerHTML = '<div class="loading">Metric insights loaded</div>';
+        }
+        
+        function resetDashboard() {
+            document.getElementById('alarmsContent').innerHTML = '<div class="loading">Select an account to view CloudWatch alarms</div>';
+            document.getElementById('metricsInsightsContent').innerHTML = '<div class="loading">Select an account to view metric insights</div>';
+            
+            document.getElementById('totalAlarms').textContent = '-';
+            document.getElementById('alarmingAlarms').textContent = '-';
+            document.getElementById('okAlarms').textContent = '-';
+            document.getElementById('insufficientDataAlarms').textContent = '-';
+        }
+        
+        // Export functionality
+        function toggleExportDropdown() {
+            const dropdown = document.getElementById('exportDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function exportData(format) {
+            if (!alarmsData || alarmsData.length === 0) {
+                alert('No data to export. Please load CloudWatch alarms first.');
+                return;
+            }
+            
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            const filename = `cloudwatch-alarms-${timestamp}`;
+            
+            if (format === 'csv') {
+                exportToCSV(alarmsData, filename);
+            } else if (format === 'json') {
+                exportToJSON(alarmsData, filename);
+            } else if (format === 'excel') {
+                exportToExcel(alarmsData, filename);
+            }
+            
+            document.getElementById('exportDropdown').style.display = 'none';
+        }
+        
+        function exportToCSV(data, filename) {
+            const headers = ['Alarm Name', 'State', 'Metric', 'Threshold', 'Region', 'Last Updated'];
+            const csvContent = [
+                headers.join(','),
+                ...data.map(alarm => [
+                    `"${alarm.alarmName}"`,
+                    alarm.state,
+                    alarm.metricName,
+                    alarm.threshold,
+                    alarm.region,
+                    new Date(alarm.stateUpdatedTimestamp).toISOString()
+                ].join(','))
+            ].join('\n');
+            
+            downloadFile(csvContent, `${filename}.csv`, 'text/csv');
+        }
+        
+        function exportToJSON(data, filename) {
+            const jsonContent = JSON.stringify(data, null, 2);
+            downloadFile(jsonContent, `${filename}.json`, 'application/json');
+        }
+        
+        function exportToExcel(data, filename) {
+            alert('Excel export will download as CSV format compatible with Excel');
+            exportToCSV(data, filename);
+        }
+        
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Additional styling for alarm states
+        const additionalCSS = `
+            .state-alarming {
+                background: #f8d7da;
+                color: #721c24;
+            }
+            
+            .state-ok {
+                background: #d4edda;
+                color: #155724;
+            }
+            
+            .state-insufficient {
+                background: #fff3cd;
+                color: #856404;
+            }
+        `;
+        
+        const style = document.createElement('style');
+        style.textContent = additionalCSS;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

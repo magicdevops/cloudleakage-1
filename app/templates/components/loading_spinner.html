@@ -1,0 +1,74 @@
+<!-- Reusable Loading Spinner Component -->
+{% macro loading_spinner(size="medium", text="Loading...", inline=false) %}
+<div class="loading-container {{ 'loading-inline' if inline else 'loading-block' }}">
+    <div class="spinner spinner-{{ size }}"></div>
+    {% if text %}
+    <div class="loading-text">{{ text }}</div>
+    {% endif %}
+</div>
+
+<style>
+.loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+
+.loading-block {
+    flex-direction: column;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.loading-inline {
+    flex-direction: row;
+    gap: 12px;
+    padding: 8px;
+}
+
+.spinner {
+    border: 3px solid var(--border-light);
+    border-top: 3px solid var(--primary-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.spinner-small {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+.spinner-medium {
+    width: 24px;
+    height: 24px;
+}
+
+.spinner-large {
+    width: 40px;
+    height: 40px;
+    border-width: 4px;
+}
+
+.loading-text {
+    font-size: 0.9rem;
+    margin-top: 8px;
+}
+
+.loading-inline .loading-text {
+    margin-top: 0;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+{% endmacro %}
+
+<!-- Usage Examples:
+{{ loading_spinner() }}
+{{ loading_spinner("large", "Syncing data...") }}
+{{ loading_spinner("small", "Loading", true) }}
+-->

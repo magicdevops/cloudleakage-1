@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EC2 Dashboard - CloudLeakage</title>
+    <link href="{{ url_for('static', filename='css/cloudspend-style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .ec2-dashboard {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            color: white;
+        }
+        
+        .account-selector {
+            margin-bottom: 20px;
+        }
+        
+        .account-selector select {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            min-width: 200px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .metric-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .instances-section, .recommendations-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .section-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .sync-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .sync-btn:hover {
+            background: #218838;
+        }
+        
+        .instances-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .instances-table th,
+        .instances-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .instances-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .instance-state {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .state-running {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .state-stopped {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .state-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .recommendation-card {
+            margin: 15px 20px;
+            padding: 15px;
+            border-left: 4px solid #ffc107;
+            background: #fff8e1;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .recommendation-card.high {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .recommendation-card.medium {
+            border-left-color: #fd7e14;
+            background: #fff3cd;
+        }
+        
+        .recommendation-card.low {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .recommendation-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .recommendation-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px;
+        }
+        
+        .utilization-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .utilization-btn:hover {
+            background: #0056b3;
+        }
+        
+        .region-filter {
+            margin-left: 20px;
+        }
+        
+        .region-filter select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="icon">☁️</div>
+                    <span>CloudSpend</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <div class="nav-item">
+                        <a href="/" class="nav-link">
+                            <div class="icon"><i class="fas fa-tachometer-alt"></i></div>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">EC2 Instances</div>
+                    <div class="nav-item">
+                        <a href="/ec2" class="nav-link active">
+                            <div class="icon"><i class="fas fa-server"></i></div>
+                            <span>EC2 Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area">
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-title">
+                        <i class="fas fa-server" style="margin-right: 12px; color: var(--primary-blue);"></i>
+                        EC2 Dashboard
+                    </div>
+                    <div class="header-actions">
+                        <button onclick="refreshAllData()" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh All Data
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Account & Region Selector - Compact Right Side -->
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+                    <div class="compact-selector-box" style="display: flex; gap: 16px; align-items: center; background: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;">
+                        <div>
+                            <label for="accountSelect" style="display: block; margin-bottom: 4px; font-weight: 600; color: #666; font-size: 12px;">AWS Account:</label>
+                            <select id="accountSelect" onchange="loadAccountData()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 180px;">
+                                <option value="">Loading accounts...</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="regionSelect" style="display: block; margin-bottom: 4px; font-weight: 600; color: #666; font-size: 12px;">Region:</label>
+                            <select id="regionSelect" onchange="loadInstanceData()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 150px;">
+                                <option value="">All Regions</option>
+                                <option value="us-east-1">US East (N. Virginia)</option>
+                                <option value="us-east-2">US East (Ohio)</option>
+                                <option value="us-west-1">US West (N. California)</option>
+                                <option value="us-west-2">US West (Oregon)</option>
+                                <option value="eu-west-1">Europe (Ireland)</option>
+                                <option value="eu-west-2">Europe (London)</option>
+                                <option value="eu-central-1">Europe (Frankfurt)</option>
+                                <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                                <option value="ap-southeast-2">Asia Pacific (Sydney)</option>
+                                <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
+                                <option value="ap-south-1">Asia Pacific (Mumbai)</option>
+                                <option value="ca-central-1">Canada (Central)</option>
+                                <option value="sa-east-1">South America (São Paulo)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Metrics Overview -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="totalInstances">-</div>
+                        <div class="metric-label">Total Instances</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="runningInstances">-</div>
+                        <div class="metric-label">Running</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="stoppedInstances">-</div>
+                        <div class="metric-label">Stopped</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="totalRecommendations">-</div>
+                        <div class="metric-label">Optimization Opportunities</div>
+                    </div>
+                </div>
+
+                <!-- Stopped Instances Duration Analysis -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <i class="fas fa-clock" style="margin-right: 8px; color: var(--warning-yellow);"></i>
+                                Stopped Instances Duration Analysis
+                            </h3>
+                            <p class="card-subtitle">Instances stopped for extended periods</p>
+                        </div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div>
+                                <label for="durationFilter" style="margin-right: 8px; font-weight: 600;">Filter:</label>
+                                <select id="durationFilter" onchange="filterStoppedInstances()" style="padding: 8px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 14px;">
+                                    <option value="all">All Stopped</option>
+                                    <option value="7">Stopped > 7 Days</option>
+                                    <option value="30">Stopped > 30 Days</option>
+                                    <option value="60">Stopped > 60 Days</option>
+                                    <option value="90">Stopped > 90 Days</option>
+                                </select>
+                            </div>
+                            <div class="dropdown" style="position: relative;">
+                                <button onclick="toggleStoppedExportDropdown()" class="btn btn-success" style="font-size: 14px; padding: 8px 16px;">
+                                    <i class="fas fa-download"></i>
+                                    Export Stopped
+                                </button>
+                                <div id="stoppedExportDropdown" class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 1000; min-width: 180px;">
+                                    <button onclick="exportStoppedData('csv')" class="dropdown-item">
+                                        <i class="fas fa-file-csv"></i>
+                                        Export CSV
+                                    </button>
+                                    <button onclick="exportStoppedData('json')" class="dropdown-item">
+                                        <i class="fas fa-file-code"></i>
+                                        Export JSON
+                                    </button>
+                                    <button onclick="exportStoppedData('excel')" class="dropdown-item">
+                                        <i class="fas fa-file-excel"></i>
+                                        Export Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-grid">
+                            <div class="metric-card" style="background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%); color: #2d3436;">
+                                <div class="metric-value" id="stopped30Days">-</div>
+                                <div class="metric-label">Stopped > 30 Days</div>
+                                <small style="opacity: 0.8;">Potential cost savings</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #fab1a0 0%, #e17055 100%); color: white;">
+                                <div class="metric-value" id="stopped60Days">-</div>
+                                <div class="metric-label">Stopped > 60 Days</div>
+                                <small style="opacity: 0.8;">Consider termination</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%); color: white;">
+                                <div class="metric-value" id="stopped90Days">-</div>
+                                <div class="metric-label">Stopped > 90 Days</div>
+                                <small style="opacity: 0.8;">High priority cleanup</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Filtered Stopped Instances Table -->
+                        <div id="stoppedInstancesTable" style="margin-top: 20px; display: none;">
+                            <h4 style="margin-bottom: 16px; color: var(--text-primary);">Filtered Stopped Instances</h4>
+                            <div id="stoppedInstancesContent"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- EC2 Instances -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <i class="fas fa-server" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                                EC2 Instances
+                            </h3>
+                            <p class="card-subtitle">Manage and monitor your EC2 instances</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="syncInstanceData()" class="btn btn-secondary" id="syncBtn">
+                                <i class="fas fa-sync-alt"></i>
+                                Sync Data
+                            </button>
+                            <div class="dropdown" style="position: relative;">
+                                <button onclick="toggleExportDropdown()" class="btn btn-success" id="exportBtn">
+                                    <i class="fas fa-download"></i>
+                                    Export
+                                </button>
+                                <div id="exportDropdown" class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 1000; min-width: 150px;">
+                                    <button onclick="exportData('csv')" class="dropdown-item">
+                                        <i class="fas fa-file-csv"></i>
+                                        Export CSV
+                                    </button>
+                                    <button onclick="exportData('json')" class="dropdown-item">
+                                        <i class="fas fa-file-code"></i>
+                                        Export JSON
+                                    </button>
+                                    <button onclick="exportData('excel')" class="dropdown-item">
+                                        <i class="fas fa-file-excel"></i>
+                                        Export Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="instancesContent" class="loading">Select an account to view EC2 instances</div>
+                    </div>
+                </div>
+
+                <!-- Optimization Recommendations -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-lightbulb" style="margin-right: 8px; color: var(--warning-yellow);"></i>
+                            Optimization Recommendations
+                        </h3>
+                        <p class="card-subtitle">Cost optimization opportunities for your EC2 instances</p>
+                    </div>
+                    <div class="card-body">
+                        <div id="recommendationsContent" class="loading">Select an account to view recommendations</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentAccountId = null;
+        let instancesData = [];
+        let recommendationsData = [];
+        let stoppedInstancesData = [];
+        
+        // Load accounts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAccounts();
+        });
+        
+        async function loadAccounts() {
+            try {
+                const response = await fetch('/integration/api/accounts');
+                const data = await response.json();
+                
+                const accountSelect = document.getElementById('accountSelect');
+                accountSelect.innerHTML = '<option value="">Select an account...</option>';
+                
+                if (data.success && data.accounts.length > 0) {
+                    data.accounts.forEach(account => {
+                        const option = document.createElement('option');
+                        option.value = account.id;
+                        option.textContent = `${account.displayName} (${account.provider.toUpperCase()})`;
+                        accountSelect.appendChild(option);
+                    });
+                } else {
+                    accountSelect.innerHTML = '<option value="">No accounts found</option>';
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                document.getElementById('accountSelect').innerHTML = '<option value="">Error loading accounts</option>';
+            }
+        }
+        
+        function loadAccountData() {
+            const accountSelect = document.getElementById('accountSelect');
+            currentAccountId = accountSelect.value;
+            
+            if (currentAccountId) {
+                loadInstanceData();
+                loadRecommendations();
+                loadStoppedDurationData();
+            } else {
+                resetDashboard();
+            }
+        }
+        
+        async function loadInstanceData() {
+            if (!currentAccountId) return;
+            
+            const region = document.getElementById('regionSelect').value;
+            const instancesContent = document.getElementById('instancesContent');
+            instancesContent.innerHTML = '<div class="loading">Loading EC2 instances...</div>';
+            
+            try {
+                const url = `/ec2/api/accounts/${currentAccountId}/instances${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    instancesData = data.instances;
+                    displayInstances(instancesData);
+                    updateMetrics();
+                    // Also reload stopped duration data when instances change
+                    loadStoppedDurationData();
+                } else {
+                    instancesContent.innerHTML = `<div class="error-message">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                console.error('Error loading instances:', error);
+                instancesContent.innerHTML = '<div class="error-message">Failed to load instances</div>';
+            }
+        }
+        
+        async function loadRecommendations() {
+            if (!currentAccountId) return;
+            
+            const recommendationsContent = document.getElementById('recommendationsContent');
+            recommendationsContent.innerHTML = '<div class="loading">Loading recommendations...</div>';
+            
+            try {
+                const response = await fetch(`/ec2/api/accounts/${currentAccountId}/recommendations`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    recommendationsData = data.recommendations;
+                    displayRecommendations(recommendationsData);
+                    updateMetrics();
+                } else {
+                    recommendationsContent.innerHTML = `<div class="error-message">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                console.error('Error loading recommendations:', error);
+                recommendationsContent.innerHTML = '<div class="error-message">Failed to load recommendations</div>';
+            }
+        }
+        
+        function displayInstances(instances) {
+            const instancesContent = document.getElementById('instancesContent');
+            
+            if (instances.length === 0) {
+                instancesContent.innerHTML = '<div class="loading">No EC2 instances found</div>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table class="instances-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Instance ID</th>
+                            <th>Type</th>
+                            <th>State</th>
+                            <th>Region</th>
+                            <th>Launch Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            instances.forEach(instance => {
+                const launchTime = new Date(instance.launchTime).toLocaleDateString();
+                const stateClass = `state-${instance.state}`;
+                const instanceName = instance.tags && instance.tags.Name ? instance.tags.Name : 'Unnamed';
+                
+                tableHTML += `
+                    <tr onclick="openInstanceDetails('${instance.instanceId}')" style="cursor: pointer;">
+                        <td><strong>${instanceName}</strong></td>
+                        <td>${instance.instanceId}</td>
+                        <td>${instance.instanceType}</td>
+                        <td><span class="instance-state ${stateClass}">${instance.state}</span></td>
+                        <td>${instance.region}</td>
+                        <td>${launchTime}</td>
+                        <td onclick="event.stopPropagation();">
+                            <button class="utilization-btn" onclick="viewUtilization('${instance.instanceId}')">
+                                📊 Utilization
+                            </button>
+                            <button class="details-btn" onclick="openInstanceDetails('${instance.instanceId}')">
+                                🔍 Details
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            instancesContent.innerHTML = tableHTML;
+        }
+        
+        function displayRecommendations(recommendations) {
+            const recommendationsContent = document.getElementById('recommendationsContent');
+            
+            if (recommendations.length === 0) {
+                recommendationsContent.innerHTML = '<div class="loading">No optimization recommendations at this time</div>';
+                return;
+            }
+            
+            let recommendationsHTML = '';
+            
+            recommendations.forEach(rec => {
+                recommendationsHTML += `
+                    <div class="recommendation-card ${rec.severity}">
+                        <div class="recommendation-title">
+                            ${rec.type.toUpperCase()}: ${rec.instanceId} (${rec.instanceType})
+                        </div>
+                        <div class="recommendation-details">
+                            <strong>Recommendation:</strong> ${rec.recommendation}<br>
+                            <strong>Potential Savings:</strong> ${rec.potentialSavings}<br>
+                            <strong>Region:</strong> ${rec.region}
+                            ${rec.avgCpuUtilization ? `<br><strong>Avg CPU:</strong> ${rec.avgCpuUtilization.toFixed(1)}%` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            recommendationsContent.innerHTML = recommendationsHTML;
+        }
+        
+        function updateMetrics() {
+            const totalInstances = instancesData.length;
+            const runningInstances = instancesData.filter(i => i.state === 'running').length;
+            const stoppedInstances = instancesData.filter(i => i.state === 'stopped').length;
+            const totalRecommendations = recommendationsData.length;
+            
+            document.getElementById('totalInstances').textContent = totalInstances;
+            document.getElementById('runningInstances').textContent = runningInstances;
+            document.getElementById('stoppedInstances').textContent = stoppedInstances;
+            document.getElementById('totalRecommendations').textContent = totalRecommendations;
+        }
+        
+        async function syncInstanceData() {
+            if (!currentAccountId) return;
+            
+            const syncBtn = document.getElementById('syncBtn');
+            syncBtn.textContent = '🔄 Syncing...';
+            syncBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`/ec2/api/accounts/${currentAccountId}/sync`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Successfully synced ${data.instances_synced} instances`);
+                    loadInstanceData();
+                } else {
+                    alert(`Sync failed: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error syncing data:', error);
+                alert('Failed to sync data');
+            } finally {
+                syncBtn.textContent = '🔄 Sync Data';
+                syncBtn.disabled = false;
+            }
+        }
+        
+        async function viewUtilization(instanceId) {
+            if (!currentAccountId) return;
+            
+            try {
+                const response = await fetch(`/ec2/api/accounts/${currentAccountId}/instances/${instanceId}/utilization?days=7`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const util = data.utilization;
+                    const avgCpu = util.cpuUtilization.averageCpu.toFixed(1);
+                    const maxCpu = util.cpuUtilization.maxCpu.toFixed(1);
+                    const networkIn = (util.networkIn.totalBytes / 1024 / 1024).toFixed(2);
+                    const networkOut = (util.networkOut.totalBytes / 1024 / 1024).toFixed(2);
+                    
+                    alert(`Utilization for ${instanceId} (7 days):\n\n` +
+                          `Average CPU: ${avgCpu}%\n` +
+                          `Max CPU: ${maxCpu}%\n` +
+                          `Network In: ${networkIn} MB\n` +
+                          `Network Out: ${networkOut} MB`);
+                } else {
+                    alert(`Failed to get utilization: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error fetching utilization:', error);
+                alert('Failed to fetch utilization data');
+            }
+        }
+        
+        async function loadStoppedDurationData() {
+            if (!currentAccountId) return;
+            
+            const region = document.getElementById('regionSelect').value;
+            
+            try {
+                const url = `/ec2/api/accounts/${currentAccountId}/stopped-duration${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const durationData = data.duration_data;
+                    document.getElementById('stopped30Days').textContent = durationData.stopped_30_days;
+                    document.getElementById('stopped60Days').textContent = durationData.stopped_60_days;
+                    document.getElementById('stopped90Days').textContent = durationData.stopped_90_days;
+                    
+                    // Store stopped instances data for filtering
+                    stoppedInstancesData = instancesData.filter(instance => instance.state === 'stopped');
+                } else {
+                    // Reset to default values on error
+                    document.getElementById('stopped30Days').textContent = '-';
+                    document.getElementById('stopped60Days').textContent = '-';
+                    document.getElementById('stopped90Days').textContent = '-';
+                    stoppedInstancesData = [];
+                }
+            } catch (error) {
+                console.error('Error loading stopped duration data:', error);
+                // Reset to default values on error
+                document.getElementById('stopped30Days').textContent = '-';
+                document.getElementById('stopped60Days').textContent = '-';
+                document.getElementById('stopped90Days').textContent = '-';
+                stoppedInstancesData = [];
+            }
+        }
+
+        function filterStoppedInstances() {
+            const filterValue = document.getElementById('durationFilter').value;
+            const stoppedTable = document.getElementById('stoppedInstancesTable');
+            const stoppedContent = document.getElementById('stoppedInstancesContent');
+            
+            if (filterValue === 'all') {
+                stoppedTable.style.display = 'none';
+                return;
+            }
+            
+            // Filter stopped instances by duration
+            const now = new Date();
+            const filteredInstances = stoppedInstancesData.filter(instance => {
+                const launchTime = new Date(instance.launchTime);
+                const daysSinceLaunch = Math.floor((now - launchTime) / (1000 * 60 * 60 * 24));
+                
+                switch(filterValue) {
+                    case '7':
+                        return daysSinceLaunch >= 7;
+                    case '30':
+                        return daysSinceLaunch >= 30;
+                    case '60':
+                        return daysSinceLaunch >= 60;
+                    case '90':
+                        return daysSinceLaunch >= 90;
+                    default:
+                        return false;
+                }
+            });
+            
+            if (filteredInstances.length === 0) {
+                stoppedContent.innerHTML = '<div class="loading">No instances found for the selected duration</div>';
+            } else {
+                displayFilteredStoppedInstances(filteredInstances);
+            }
+            
+            stoppedTable.style.display = 'block';
+        }
+        
+        function displayFilteredStoppedInstances(instances) {
+            const stoppedContent = document.getElementById('stoppedInstancesContent');
+            
+            let tableHTML = `
+                <table class="instances-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Instance ID</th>
+                            <th>Type</th>
+                            <th>Region</th>
+                            <th>Launch Time</th>
+                            <th>Days Since Launch</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            const now = new Date();
+            instances.forEach(instance => {
+                const launchTime = new Date(instance.launchTime);
+                const daysSinceLaunch = Math.floor((now - launchTime) / (1000 * 60 * 60 * 24));
+                const instanceName = instance.tags && instance.tags.Name ? instance.tags.Name : 'Unnamed';
+                
+                tableHTML += `
+                    <tr onclick="openInstanceDetails('${instance.instanceId}')" style="cursor: pointer;">
+                        <td><strong>${instanceName}</strong></td>
+                        <td>${instance.instanceId}</td>
+                        <td>${instance.instanceType}</td>
+                        <td>${instance.region}</td>
+                        <td>${launchTime.toLocaleDateString()}</td>
+                        <td><span style="color: ${daysSinceLaunch >= 90 ? '#e84393' : daysSinceLaunch >= 60 ? '#e17055' : '#fdcb6e'}; font-weight: bold;">${daysSinceLaunch} days</span></td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            stoppedContent.innerHTML = tableHTML;
+        }
+        
+        function toggleStoppedExportDropdown() {
+            const dropdown = document.getElementById('stoppedExportDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function closeDropdown(e) {
+                if (!e.target.closest('#stoppedExportDropdown') && !e.target.closest('[onclick="toggleStoppedExportDropdown()"]')) {
+                    dropdown.style.display = 'none';
+                    document.removeEventListener('click', closeDropdown);
+                }
+            });
+        }
+        
+        function exportStoppedData(format) {
+            const filterValue = document.getElementById('durationFilter').value;
+            let dataToExport = stoppedInstancesData;
+            
+            // Apply filter if not 'all'
+            if (filterValue !== 'all') {
+                const now = new Date();
+                dataToExport = stoppedInstancesData.filter(instance => {
+                    const launchTime = new Date(instance.launchTime);
+                    const daysSinceLaunch = Math.floor((now - launchTime) / (1000 * 60 * 60 * 24));
+                    
+                    switch(filterValue) {
+                        case '7':
+                            return daysSinceLaunch >= 7;
+                        case '30':
+                            return daysSinceLaunch >= 30;
+                        case '60':
+                            return daysSinceLaunch >= 60;
+                        case '90':
+                            return daysSinceLaunch >= 90;
+                        default:
+                            return false;
+                    }
+                });
+            }
+            
+            if (dataToExport.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            const fileName = `stopped_instances_${filterValue !== 'all' ? filterValue + '_days' : 'all'}_${new Date().toISOString().split('T')[0]}`;
+            
+            if (format === 'csv') {
+                exportToCSV(dataToExport, fileName);
+            } else if (format === 'json') {
+                exportToJSON(dataToExport, fileName);
+            } else if (format === 'excel') {
+                exportToExcel(dataToExport, fileName);
+            }
+            
+            // Close dropdown
+            document.getElementById('stoppedExportDropdown').style.display = 'none';
+        }
+        
+        function exportToCSV(data, fileName) {
+            const headers = ['Name', 'Instance ID', 'Type', 'State', 'Region', 'Launch Time', 'Days Since Launch'];
+            const now = new Date();
+            
+            const csvContent = [
+                headers.join(','),
+                ...data.map(instance => {
+                    const launchTime = new Date(instance.launchTime);
+                    const daysSinceLaunch = Math.floor((now - launchTime) / (1000 * 60 * 60 * 24));
+                    const instanceName = instance.tags && instance.tags.Name ? instance.tags.Name : 'Unnamed';
+                    
+                    return [
+                        `"${instanceName}"`,
+                        instance.instanceId,
+                        instance.instanceType,
+                        instance.state,
+                        instance.region,
+                        launchTime.toISOString(),
+                        daysSinceLaunch
+                    ].join(',');
+                })
+            ].join('\n');
+            
+            downloadFile(csvContent, `${fileName}.csv`, 'text/csv');
+        }
+        
+        function exportToJSON(data, fileName) {
+            const now = new Date();
+            const enrichedData = data.map(instance => {
+                const launchTime = new Date(instance.launchTime);
+                const daysSinceLaunch = Math.floor((now - launchTime) / (1000 * 60 * 60 * 24));
+                
+                return {
+                    ...instance,
+                    daysSinceLaunch,
+                    exportDate: new Date().toISOString()
+                };
+            });
+            
+            const jsonContent = JSON.stringify(enrichedData, null, 2);
+            downloadFile(jsonContent, `${fileName}.json`, 'application/json');
+        }
+        
+        function exportToExcel(data, fileName) {
+            // For Excel export, we'll create a CSV with Excel-friendly formatting
+            alert('Excel export will download as CSV format compatible with Excel');
+            exportToCSV(data, fileName);
+        }
+        
+        function downloadFile(content, fileName, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        function refreshAllData() {
+            if (currentAccountId) {
+                loadInstanceData();
+                loadRecommendations();
+                loadStoppedDurationData();
+            }
+        }
+        
+        function openInstanceDetails(instanceId) {
+            const instance = instancesData.find(i => i.instanceId === instanceId);
+            if (!instance) return;
+            
+            const instanceName = instance.tags && instance.tags.Name ? instance.tags.Name : 'Unnamed';
+            
+            // Create modal HTML
+            const modalHTML = `
+                <div id="instanceModal" class="modal" onclick="closeModal(event)">
+                    <div class="modal-content" onclick="event.stopPropagation();">
+                        <div class="modal-header">
+                            <h2>🖥️ ${instanceName}</h2>
+                            <span class="close" onclick="closeModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="instance-details-grid">
+                                <div class="detail-section">
+                                    <h3>Basic Information</h3>
+                                    <div class="detail-item"><strong>Name:</strong> ${instanceName}</div>
+                                    <div class="detail-item"><strong>Instance ID:</strong> ${instance.instanceId}</div>
+                                    <div class="detail-item"><strong>Type:</strong> ${instance.instanceType}</div>
+                                    <div class="detail-item"><strong>State:</strong> <span class="instance-state state-${instance.state}">${instance.state}</span></div>
+                                    <div class="detail-item"><strong>Platform:</strong> ${instance.platform}</div>
+                                    <div class="detail-item"><strong>Architecture:</strong> ${instance.architecture || 'N/A'}</div>
+                                </div>
+                                
+                                <div class="detail-section">
+                                    <h3>Network & Location</h3>
+                                    <div class="detail-item"><strong>Region:</strong> ${instance.region}</div>
+                                    <div class="detail-item"><strong>Availability Zone:</strong> ${instance.availabilityZone}</div>
+                                    <div class="detail-item"><strong>VPC ID:</strong> ${instance.vpcId || 'N/A'}</div>
+                                    <div class="detail-item"><strong>Subnet ID:</strong> ${instance.subnetId || 'N/A'}</div>
+                                    <div class="detail-item"><strong>Private IP:</strong> ${instance.privateIpAddress || 'N/A'}</div>
+                                    <div class="detail-item"><strong>Public IP:</strong> ${instance.publicIpAddress || 'N/A'}</div>
+                                </div>
+                                
+                                <div class="detail-section">
+                                    <h3>Configuration</h3>
+                                    <div class="detail-item"><strong>Launch Time:</strong> ${new Date(instance.launchTime).toLocaleString()}</div>
+                                    <div class="detail-item"><strong>Key Name:</strong> ${instance.keyName || 'N/A'}</div>
+                                    <div class="detail-item"><strong>Security Groups:</strong> ${instance.securityGroups ? instance.securityGroups.join(', ') : 'N/A'}</div>
+                                    <div class="detail-item"><strong>EBS Optimized:</strong> ${instance.ebsOptimized ? 'Yes' : 'No'}</div>
+                                    <div class="detail-item"><strong>Monitoring:</strong> ${instance.monitoring}</div>
+                                </div>
+                                
+                                <div class="detail-section">
+                                    <h3>Tags</h3>
+                                    <div class="tags-container">
+                                        ${instance.tags ? Object.entries(instance.tags).map(([key, value]) => 
+                                            `<div class="tag-item"><strong>${key}:</strong> ${value}</div>`
+                                        ).join('') : '<div class="detail-item">No tags</div>'}
+                                    </div>
+                                </div>
+                                
+                                ${instance.storage && instance.storage.length > 0 ? `
+                                <div class="detail-section">
+                                    <h3>Storage</h3>
+                                    ${instance.storage.map(storage => `
+                                        <div class="storage-item">
+                                            <strong>${storage.deviceName}:</strong> ${storage.volumeId} (${storage.status})
+                                            ${storage.deleteOnTermination ? ' - Delete on termination' : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="modal-actions">
+                                <button class="utilization-btn" onclick="viewUtilization('${instance.instanceId}')">
+                                    📊 View Utilization
+                                </button>
+                                <button class="sync-btn" onclick="syncSingleInstance('${instance.instanceId}')">
+                                    🔄 Refresh Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+        
+        function closeModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const modal = document.getElementById('instanceModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function syncSingleInstance(instanceId) {
+            // Refresh the entire account data to get latest instance state
+            if (currentAccountId) {
+                fetch(`/ec2/api/accounts/${currentAccountId}/sync`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadInstanceData();
+                        closeModal();
+                        alert('Instance data refreshed successfully!');
+                    } else {
+                        alert('Failed to refresh data: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error syncing data:', error);
+                    alert('Error refreshing data');
+                });
+            }
+        }
+
+        function toggleExportDropdown() {
+            const dropdown = document.getElementById('exportDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('exportDropdown');
+            const exportBtn = document.getElementById('exportBtn');
+            if (dropdown && !exportBtn.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        function exportData(format) {
+            if (!instancesData || instancesData.length === 0) {
+                alert('No data to export. Please load EC2 instances first.');
+                return;
+            }
+
+            // Close dropdown
+            document.getElementById('exportDropdown').style.display = 'none';
+
+            // Prepare comprehensive data for export
+            const exportData = instancesData.map(instance => ({
+                // Basic Information
+                Name: instance.tags && instance.tags.Name ? instance.tags.Name : 'Unnamed',
+                InstanceId: instance.instanceId,
+                InstanceType: instance.instanceType,
+                State: instance.state,
+                Platform: instance.platform,
+                Architecture: instance.architecture || 'N/A',
+                
+                // Location & Network
+                Region: instance.region,
+                AvailabilityZone: instance.availabilityZone,
+                VpcId: instance.vpcId || 'N/A',
+                SubnetId: instance.subnetId || 'N/A',
+                PrivateIpAddress: instance.privateIpAddress || 'N/A',
+                PublicIpAddress: instance.publicIpAddress || 'N/A',
+                
+                // Configuration
+                LaunchTime: instance.launchTime,
+                KeyName: instance.keyName || 'N/A',
+                SecurityGroups: instance.securityGroups ? instance.securityGroups.join(', ') : 'N/A',
+                EbsOptimized: instance.ebsOptimized ? 'Yes' : 'No',
+                Monitoring: instance.monitoring,
+                RootDeviceType: instance.rootDeviceType || 'N/A',
+                VirtualizationType: instance.virtualizationType || 'N/A',
+                Hypervisor: instance.hypervisor || 'N/A',
+                
+                // Tags (flattened)
+                ...Object.fromEntries(
+                    Object.entries(instance.tags || {}).map(([key, value]) => [`Tag_${key}`, value])
+                ),
+                
+                // Storage
+                StorageDevices: instance.storage ? instance.storage.map(s => 
+                    `${s.deviceName}: ${s.volumeId} (${s.status})`
+                ).join('; ') : 'N/A'
+            }));
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            const filename = `ec2-instances-${timestamp}`;
+
+            if (format === 'csv') {
+                exportToCSV(exportData, filename);
+            } else if (format === 'json') {
+                exportToJSON(exportData, filename);
+            } else if (format === 'excel') {
+                exportToExcel(exportData, filename);
+            }
+        }
+
+        function exportToCSV(data, filename) {
+            if (data.length === 0) return;
+            
+            const headers = Object.keys(data[0]);
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => 
+                    headers.map(header => {
+                        const value = row[header] || '';
+                        // Escape commas and quotes in CSV
+                        return `"${String(value).replace(/"/g, '""')}"`;
+                    }).join(',')
+                )
+            ].join('\n');
+            
+            downloadFile(csvContent, `${filename}.csv`, 'text/csv');
+        }
+
+        function exportToJSON(data, filename) {
+            const jsonContent = JSON.stringify(data, null, 2);
+            downloadFile(jsonContent, `${filename}.json`, 'application/json');
+        }
+
+        function exportToExcel(data, filename) {
+            // Create a simple Excel-compatible format (tab-separated values)
+            if (data.length === 0) return;
+            
+            const headers = Object.keys(data[0]);
+            const excelContent = [
+                headers.join('\t'),
+                ...data.map(row => 
+                    headers.map(header => row[header] || '').join('\t')
+                )
+            ].join('\n');
+            
+            downloadFile(excelContent, `${filename}.xls`, 'application/vnd.ms-excel');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        function resetDashboard() {
+            document.getElementById('instancesContent').innerHTML = '<div class="loading">Select an account to view EC2 instances</div>';
+            document.getElementById('recommendationsContent').innerHTML = '<div class="loading">Select an account to view recommendations</div>';
+            
+            document.getElementById('totalInstances').textContent = '-';
+            document.getElementById('runningInstances').textContent = '-';
+            document.getElementById('stoppedInstances').textContent = '-';
+            document.getElementById('totalRecommendations').textContent = '-';
+        }
+    </script>
+</body>
+</html>

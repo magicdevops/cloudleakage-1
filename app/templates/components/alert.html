@@ -1,0 +1,120 @@
+<!-- Reusable Alert Component -->
+{% macro alert(type="info", title="", message="", dismissible=false, icon="") %}
+<div class="alert alert-{{ type }} {{ 'alert-dismissible' if dismissible }}" role="alert">
+    <div class="alert-content">
+        {% if icon or type %}
+        <div class="alert-icon">
+            {% if icon %}
+                <i class="{{ icon }}"></i>
+            {% else %}
+                {% if type == "success" %}
+                    <i class="fas fa-check-circle"></i>
+                {% elif type == "warning" %}
+                    <i class="fas fa-exclamation-triangle"></i>
+                {% elif type == "danger" %}
+                    <i class="fas fa-exclamation-circle"></i>
+                {% else %}
+                    <i class="fas fa-info-circle"></i>
+                {% endif %}
+            {% endif %}
+        </div>
+        {% endif %}
+        <div class="alert-body">
+            {% if title %}
+            <div class="alert-title">{{ title }}</div>
+            {% endif %}
+            <div class="alert-message">{{ message }}</div>
+        </div>
+    </div>
+    {% if dismissible %}
+    <button type="button" class="alert-close" onclick="this.parentElement.remove()">
+        <i class="fas fa-times"></i>
+    </button>
+    {% endif %}
+</div>
+
+<style>
+.alert {
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid;
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.alert-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.alert-icon {
+    font-size: 1.2rem;
+    margin-top: 2px;
+}
+
+.alert-body {
+    flex: 1;
+}
+
+.alert-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.alert-message {
+    line-height: 1.5;
+}
+
+.alert-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.alert-close:hover {
+    opacity: 1;
+}
+
+.alert-dismissible {
+    padding-right: 48px;
+}
+
+/* Alert Types */
+.alert-info {
+    background: #e3f2fd;
+    border-color: #2196f3;
+    color: #0d47a1;
+}
+
+.alert-success {
+    background: #e8f5e8;
+    border-color: #4caf50;
+    color: #1b5e20;
+}
+
+.alert-warning {
+    background: #fff8e1;
+    border-color: #ff9800;
+    color: #e65100;
+}
+
+.alert-danger {
+    background: #ffebee;
+    border-color: #f44336;
+    color: #b71c1c;
+}
+</style>
+{% endmacro %}
+
+<!-- Usage Examples:
+{{ alert("success", "Success!", "Data synced successfully.", true) }}
+{{ alert("warning", "Warning", "Some instances may be idle.", false, "fas fa-clock") }}
+{{ alert("danger", "Error", "Failed to connect to AWS account.") }}
+-->

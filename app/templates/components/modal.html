@@ -1,0 +1,121 @@
+<!-- Reusable Modal Component -->
+{% macro modal(modal_id, title="", size="medium", closable=true) %}
+<div id="{{ modal_id }}" class="modal" onclick="closeModal('{{ modal_id }}', event)">
+    <div class="modal-content modal-{{ size }}" onclick="event.stopPropagation();">
+        <div class="modal-header">
+            <h2 class="modal-title">{{ title }}</h2>
+            {% if closable %}
+            <button class="modal-close" onclick="closeModal('{{ modal_id }}')">&times;</button>
+            {% endif %}
+        </div>
+        <div class="modal-body">
+            {{ caller() }}
+        </div>
+    </div>
+</div>
+
+<script>
+function closeModal(modalId, event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+</script>
+
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal-small { width: 90%; max-width: 400px; }
+.modal-medium { width: 90%; max-width: 600px; }
+.modal-large { width: 90%; max-width: 800px; }
+.modal-xl { width: 95%; max-width: 1200px; }
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+{% endmacro %}
+
+<!-- Usage Example:
+{% call modal("instanceModal", "Instance Details", "large") %}
+    <div class="instance-details">
+        <!-- Modal content goes here -->
+    </div>
+{% endcall %}
+-->

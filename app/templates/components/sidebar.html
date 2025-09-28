@@ -1,0 +1,99 @@
+<!-- Reusable Sidebar Component -->
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-brand">
+            <div class="icon">☁️</div>
+            <span>CloudSpend</span>
+        </div>
+    </div>
+    
+    <div class="sidebar-nav">
+        <div class="nav-section">
+            <div class="nav-section-title">Main</div>
+            <div class="nav-item">
+                <a href="/" class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}">
+                    <div class="icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/business-units" class="nav-link {{ 'active' if request.endpoint == 'business_units' }}">
+                    <div class="icon"><i class="fas fa-users"></i></div>
+                    <span>Business Units</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/budgets" class="nav-link {{ 'active' if request.endpoint == 'budgets' }}">
+                    <div class="icon"><i class="fas fa-chart-bar"></i></div>
+                    <span>Budgets</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/reports" class="nav-link {{ 'active' if request.endpoint == 'reports' }}">
+                    <div class="icon"><i class="fas fa-file-alt"></i></div>
+                    <span>Reports</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">Cloud Integration</div>
+            <div class="nav-item">
+                <a href="/integration/accounts" class="nav-link {{ 'active' if request.endpoint == 'integration_accounts' }}">
+                    <div class="icon"><i class="fas fa-link"></i></div>
+                    <span>Connected Accounts</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/integration/wizard" class="nav-link {{ 'active' if request.endpoint == 'integration_wizard' }}">
+                    <div class="icon"><i class="fas fa-plus"></i></div>
+                    <span>Add Account</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">Resources</div>
+            <div class="nav-item">
+                <a href="/ec2" class="nav-link {{ 'active' if request.endpoint == 'ec2_dashboard' }}">
+                    <div class="icon"><i class="fas fa-server"></i></div>
+                    <span>EC2 Instances</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/snapshots" class="nav-link {{ 'active' if request.endpoint == 'snapshots_dashboard' }}">
+                    <div class="icon"><i class="fas fa-hdd"></i></div>
+                    <span>Snapshots & AMI</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/cloudwatch" class="nav-link {{ 'active' if request.endpoint == 'cloudwatch_dashboard' }}">
+                    <div class="icon"><i class="fas fa-chart-line"></i></div>
+                    <span>CloudWatch</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/cloudwatch/insights" class="nav-link {{ 'active' if request.endpoint == 'cloudwatch_insights' }}">
+                    <div class="icon"><i class="fas fa-brain"></i></div>
+                    <span>AI Insights</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/terraform" class="nav-link {{ 'active' if request.endpoint == 'terraform_analyzer' }}">
+                    <div class="icon"><i class="fas fa-sitemap"></i></div>
+                    <span>Terraform Analyzer</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">Settings</div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <div class="icon"><i class="fas fa-cog"></i></div>
+                    <span>Configuration</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>

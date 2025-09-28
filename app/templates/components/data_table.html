@@ -1,0 +1,123 @@
+<!-- Reusable Data Table Component -->
+{% macro data_table(table_id, headers, data, actions=[], clickable=false, click_function="") %}
+<div class="table-container">
+    <table id="{{ table_id }}" class="data-table">
+        <thead>
+            <tr>
+                {% for header in headers %}
+                <th>{{ header.label }}</th>
+                {% endfor %}
+                {% if actions %}
+                <th>Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr {% if clickable %}onclick="{{ click_function }}('{{ row.id }}')" style="cursor: pointer;"{% endif %}>
+                {% for header in headers %}
+                <td>
+                    {% if header.type == 'badge' %}
+                        <span class="badge badge-{{ row[header.field + '_class'] or 'primary' }}">
+                            {{ row[header.field] }}
+                        </span>
+                    {% elif header.type == 'currency' %}
+                        ${{ "%.2f"|format(row[header.field] or 0) }}
+                    {% elif header.type == 'date' %}
+                        {{ row[header.field]|strftime('%Y-%m-%d') if row[header.field] else 'N/A' }}
+                    {% elif header.type == 'icon' %}
+                        <i class="{{ row[header.field] }}"></i>
+                    {% else %}
+                        {{ row[header.field] or 'N/A' }}
+                    {% endif %}
+                </td>
+                {% endfor %}
+                {% if actions %}
+                <td class="actions-cell" {% if clickable %}onclick="event.stopPropagation();"{% endif %}>
+                    {% for action in actions %}
+                    <button class="btn btn-sm btn-{{ action.class or 'primary' }}" 
+                            onclick="{{ action.function }}('{{ row.id }}')">
+                        <i class="{{ action.icon }}"></i>
+                        {{ action.label }}
+                    </button>
+                    {% endfor %}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+.table-container {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.data-table th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--text-primary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.data-table tr:hover {
+    background: var(--bg-hover);
+}
+
+.actions-cell {
+    white-space: nowrap;
+}
+
+.actions-cell .btn {
+    margin-right: 8px;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-primary { background: var(--primary-blue); color: white; }
+.badge-success { background: var(--success-green); color: white; }
+.badge-warning { background: var(--warning-yellow); color: var(--text-primary); }
+.badge-danger { background: var(--danger-red); color: white; }
+.badge-secondary { background: var(--bg-secondary); color: var(--text-secondary); }
+</style>
+{% endmacro %}
+
+<!-- Usage Example:
+{% set headers = [
+    {'field': 'name', 'label': 'Name'},
+    {'field': 'status', 'label': 'Status', 'type': 'badge'},
+    {'field': 'cost', 'label': 'Monthly Cost', 'type': 'currency'},
+    {'field': 'created_at', 'label': 'Created', 'type': 'date'}
+] %}
+
+{% set actions = [
+    {'function': 'viewDetails', 'icon': 'fas fa-eye', 'label': 'View', 'class': 'primary'},
+    {'function': 'editItem', 'icon': 'fas fa-edit', 'label': 'Edit', 'class': 'secondary'}
+] %}
+
+{{ data_table('instancesTable', headers, instances, actions, true, 'openInstanceDetails') }}
+-->

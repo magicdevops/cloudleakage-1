@@ -1,0 +1,53 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Internal Server Error{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-content">
+        <div class="error-icon">
+            <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <h1>500 - Internal Server Error</h1>
+        <p>Something went wrong on our end. Please try again later.</p>
+        <div class="error-actions">
+            <a href="/" class="btn btn-primary">
+                <i class="fas fa-home"></i>
+                Go to Dashboard
+            </a>
+            <button onclick="location.reload()" class="btn btn-secondary">
+                <i class="fas fa-refresh"></i>
+                Try Again
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+}
+
+.error-content {
+    max-width: 500px;
+    padding: 40px;
+}
+
+.error-icon {
+    font-size: 4rem;
+    color: var(--danger-red);
+    margin-bottom: 20px;
+}
+
+.error-actions {
+    margin-top: 30px;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+</style>
+{% endblock %}

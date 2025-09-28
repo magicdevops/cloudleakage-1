@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrate Account - CloudSpend</title>
+    <link href="{{ url_for('static', filename='css/cloudspend-style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .integration-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .integration-header {
+            margin-bottom: 30px;
+        }
+
+        .integration-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .step-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #6c757d;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-right: 16px;
+            font-size: 16px;
+        }
+
+        .step-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .step-content {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-label .required {
+            color: #dc3545;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+            background: white;
+            color: var(--text-primary);
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .provider-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .provider-btn {
+            padding: 8px 16px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .provider-btn.active {
+            background: #17a2b8;
+            color: white;
+            border-color: #17a2b8;
+        }
+
+        .provider-btn:hover {
+            background: #f8f9fa;
+        }
+
+        .provider-btn.active:hover {
+            background: #138496;
+        }
+
+        .access-type-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .access-btn {
+            padding: 8px 16px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .access-btn.active {
+            background: #17a2b8;
+            color: white;
+            border-color: #17a2b8;
+        }
+
+        .access-btn:hover {
+            background: #f8f9fa;
+        }
+
+        .access-btn.active:hover {
+            background: #138496;
+        }
+
+        .policy-instructions {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .policy-instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .policy-instructions li {
+            margin-bottom: 5px;
+        }
+
+        .policy-link {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .policy-link:hover {
+            text-decoration: underline;
+        }
+
+        .account-type-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .account-btn {
+            padding: 8px 16px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .account-btn.active {
+            background: #17a2b8;
+            color: white;
+            border-color: #17a2b8;
+        }
+
+        .account-btn:hover {
+            background: #f8f9fa;
+        }
+
+        .account-btn.active:hover {
+            background: #138496;
+        }
+
+        .billing-toggle {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .toggle-btn {
+            padding: 8px 16px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-btn.active {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .toggle-btn:hover {
+            background: #f8f9fa;
+        }
+
+        .toggle-btn.active:hover {
+            background: #218838;
+        }
+
+        .export-instructions {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .note-text {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .final-step {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .final-step h3 {
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .wizard-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .screenshot-container {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .screenshot-placeholder {
+            width: 100%;
+            max-width: 400px;
+            height: 200px;
+            background: #f8f9fa;
+            border: 2px dashed #ced4da;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="icon">☁️</div>
+                    <span>CloudSpend</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <div class="nav-item">
+                        <a href="/" class="nav-link">
+                            <div class="icon"><i class="fas fa-tachometer-alt"></i></div>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/business-units" class="nav-link">
+                            <div class="icon"><i class="fas fa-users"></i></div>
+                            <span>Business Units</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/budgets" class="nav-link">
+                            <div class="icon"><i class="fas fa-chart-bar"></i></div>
+                            <span>Budgets</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/reports" class="nav-link">
+                            <div class="icon"><i class="fas fa-file-alt"></i></div>
+                            <span>Reports</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Analysis</div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <div class="icon"><i class="fas fa-chart-line"></i></div>
+                            <span>Cost Explorer</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <div class="icon"><i class="fas fa-lightbulb"></i></div>
+                            <span>Recommendations</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                            <span>Anomaly Detection</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Resources</div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <div class="icon"><i class="fas fa-database"></i></div>
+                            <span>Snapshots</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <div class="icon"><i class="fas fa-bell"></i></div>
+                            <span>CloudWatch Alarms</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <div class="icon"><i class="fas fa-server"></i></div>
+                            <span>EC2 Instances</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Settings</div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <div class="icon"><i class="fas fa-cog"></i></div>
+                            <span>Configuration</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/integration/wizard" class="nav-link active">
+                            <div class="icon"><i class="fas fa-plug"></i></div>
+                            <span>Account Integration</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/sync-management" class="nav-link">
+                            <div class="icon"><i class="fas fa-sync"></i></div>
+                            <span>Sync Management</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="integration-container">
+                <div class="integration-header">
+                    <h1 class="integration-title">Integrate Account</h1>
+                </div>
+
+                <!-- Step 1: Display Name -->
+                <div class="step-container">
+                    <div class="step-header">
+                        <div class="step-number">1</div>
+                        <div class="step-title">Display Name</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="form-group">
+                            <label class="form-label">Display Name <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="displayName" placeholder="test" value="test">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Public Cloud Provider -->
+                <div class="step-container">
+                    <div class="step-header">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Public Cloud Provider</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="form-group">
+                            <label class="form-label">Public Cloud Provider <span class="required">*</span></label>
+                            <div class="provider-buttons">
+                                <button class="provider-btn active" data-provider="aws">AWS</button>
+                                <button class="provider-btn" data-provider="azure">Azure</button>
+                                <button class="provider-btn" data-provider="gcp">GCP</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Choose Your Access Type -->
+                <div class="step-container">
+                    <div class="step-header">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Choose Your Access Type</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="access-type-buttons">
+                            <button class="access-btn active" data-access="iam">IAM role</button>
+                            <button class="access-btn" data-access="accesskey">Access Key</button>
+                            <button class="access-btn" data-access="cloudformation">CloudFormation</button>
+                        </div>
+                        
+                        <!-- IAM Role Instructions -->
+                        <div id="iam-instructions" class="access-instructions">
+                            <p style="margin-top: 15px; font-size: 14px; color: #6c757d;">
+                                You can delegate access to your AWS resources via the IAM role by following the below-mentioned steps and the adjacent screenshots.
+                            </p>
+                            <p style="margin-top: 10px; font-size: 14px; color: #6c757d;">
+                                Ensure that you have the required policies for CloudSpend. If not, create your own policy before you create an IAM role.
+                            </p>
+                            
+                            <div class="policy-instructions">
+                                <h4 style="margin-bottom: 10px;">Create a custom policy</h4>
+                                <p>To create a custom policy, follow the steps below:</p>
+                                <ul>
+                                    <li>Sign into the organization's master AWS account.</li>
+                                    <li>Select <strong>Access Management > Policies</strong> from the left navigation pane.</li>
+                                    <li>Click <strong>Create policy</strong>.</li>
+                                    <li>Choose the <strong>JSON</strong> tab and delete the existing JSON policy snippet.</li>
+                                    <li>Copy and paste the custom cost policy in the <strong>JSON</strong> tab. <a href="#" class="policy-link">View cost policy</a></li>
+                                    <li>Click <strong>Next</strong>.</li>
+                                    <li>In the <strong>Review and create page</strong>, enter the <strong>Policy name</strong> and <strong>Description</strong>.</li>
+                                    <li>Click <strong>Create policy</strong>.</li>
+                                </ul>
+                                <div class="screenshot-container">
+                                    <div class="screenshot-placeholder">
+                                        Screenshot placeholder - AWS Policy Creation
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Access Key Instructions -->
+                        <div id="accesskey-instructions" class="access-instructions" style="display: none;">
+                            <p style="margin-top: 15px; font-size: 14px; color: #6c757d;">
+                                You can provide direct AWS Access Key and Secret Key for CloudSpend to access your AWS resources.
+                            </p>
+                            <div class="policy-instructions">
+                                <h4 style="margin-bottom: 10px;">Create Access Key</h4>
+                                <p>To create an Access Key, follow the steps below:</p>
+                                <ul>
+                                    <li>Sign into your AWS account.</li>
+                                    <li>Go to <strong>IAM > Users</strong> and select your user or create a new user.</li>
+                                    <li>Attach the required cost management policies to the user.</li>
+                                    <li>Go to <strong>Security credentials</strong> tab.</li>
+                                    <li>Click <strong>Create access key</strong>.</li>
+                                    <li>Select <strong>Third-party service</strong> as the use case.</li>
+                                    <li>Copy the <strong>Access Key ID</strong> and <strong>Secret Access Key</strong>.</li>
+                                    <li><strong>Important:</strong> Store these credentials securely as the secret key won't be shown again.</li>
+                                </ul>
+                                <div class="screenshot-container">
+                                    <div class="screenshot-placeholder">
+                                        Screenshot placeholder - AWS Access Key Creation
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CloudFormation Instructions -->
+                        <div id="cloudformation-instructions" class="access-instructions" style="display: none;">
+                            <p style="margin-top: 15px; font-size: 14px; color: #6c757d;">
+                                Use CloudFormation template to automatically create the required IAM role and policies.
+                            </p>
+                            <div class="policy-instructions">
+                                <h4 style="margin-bottom: 10px;">Deploy CloudFormation Template</h4>
+                                <p>To deploy the CloudFormation template:</p>
+                                <ul>
+                                    <li>Download the CloudSpend CloudFormation template.</li>
+                                    <li>Go to <strong>AWS CloudFormation</strong> console.</li>
+                                    <li>Click <strong>Create stack</strong>.</li>
+                                    <li>Upload the template file.</li>
+                                    <li>Follow the wizard to complete the stack creation.</li>
+                                    <li>Copy the Role ARN from the stack outputs.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Authentication Details -->
+                <div class="step-container">
+                    <div class="step-header">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Authentication Details</div>
+                    </div>
+                    <div class="step-content">
+                        <!-- IAM Role Fields -->
+                        <div id="iam-fields" class="auth-fields">
+                            <div class="form-group">
+                                <label class="form-label">Role ARN <span class="required">*</span></label>
+                                <input type="text" class="form-input" id="roleArn" placeholder="arn:aws:iam::123456789012:role/CloudSpendRole">
+                            </div>
+                        </div>
+
+                        <!-- Access Key Fields -->
+                        <div id="accesskey-fields" class="auth-fields" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">Access Key ID <span class="required">*</span></label>
+                                <input type="text" class="form-input" id="accessKeyId" placeholder="AKIAIOSFODNN7EXAMPLE">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Secret Access Key <span class="required">*</span></label>
+                                <input type="password" class="form-input" id="secretAccessKey" placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY">
+                                <small style="color: #dc3545; font-size: 12px; margin-top: 5px; display: block;">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    These credentials will be encrypted and stored securely. Never share them publicly.
+                                </small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">AWS Region</label>
+                                <select class="form-input" id="awsRegion">
+                                    <option value="us-east-1">US East (N. Virginia) - us-east-1</option>
+                                    <option value="us-west-2">US West (Oregon) - us-west-2</option>
+                                    <option value="eu-west-1">Europe (Ireland) - eu-west-1</option>
+                                    <option value="ap-southeast-1">Asia Pacific (Singapore) - ap-southeast-1</option>
+                                    <option value="ap-south-1">Asia Pacific (Mumbai) - ap-south-1</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- CloudFormation Fields -->
+                        <div id="cloudformation-fields" class="auth-fields" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">Stack Name <span class="required">*</span></label>
+                                <input type="text" class="form-input" id="stackName" placeholder="cloudspend-integration-stack">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Role ARN (from Stack Output) <span class="required">*</span></label>
+                                <input type="text" class="form-input" id="cfRoleArn" placeholder="arn:aws:iam::123456789012:role/CloudSpendRole">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Integrate Billing and Cost Management -->
+                <div class="step-container">
+                    <div class="step-header">
+                        <div class="step-number">5</div>
+                        <div class="step-title">Integrate Billing and Cost Management</div>
+                    </div>
+                    <div class="step-content">
+                        <p style="margin-bottom: 15px; font-size: 14px; color: #6c757d;">
+                            If you've already enabled reporting and are delivering AWS cost and usage data to an S3 bucket, switch the selected tab to <strong>Yes</strong> and provide the <strong>Export Name</strong> below. If not, follow the below mentioned steps to get
+                        </p>
+                        <div class="billing-toggle">
+                            <button class="toggle-btn active" data-billing="yes">Yes</button>
+                            <button class="toggle-btn" data-billing="no">No</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Account Type -->
+                <div class="step-container">
+                    <div class="step-header">
+                        <div class="step-number">6</div>
+                        <div class="step-title">Account Type</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="account-type-buttons">
+                            <button class="account-btn active" data-account="organization">Organization</button>
+                            <button class="account-btn" data-account="linked">Linked Account</button>
+                        </div>
+                        <div class="export-instructions">
+                            <p><strong>Fill in the below field:</strong></p>
+                            <ul>
+                                <li><strong>Export Name:</strong> Copy and paste the export name created in the <em>Integrate Billing and Cost Management</em> section.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 7: Export Name -->
+                <div class="step-container">
+                    <div class="step-header">
+                        <div class="step-number">7</div>
+                        <div class="step-title">Export Name</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="form-group">
+                            <label class="form-label">Export Name <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="exportName" placeholder="Export Name">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 8: Start Date for Bill Processing -->
+                <div class="step-container">
+                    <div class="step-header">
+                        <div class="step-number">8</div>
+                        <div class="step-title">Start Date for Bill Processing</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="form-group">
+                            <label class="form-label">Start Date for Bill Processing <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="startDate" placeholder="Jul-2025" value="Jul-2025">
+                            <div class="note-text">
+                                <strong>Note:</strong> Evaluation users are only eligible to view 2 months of data.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 9: Final Step -->
+                <div class="step-container">
+                    <div class="step-header">
+                        <div class="step-number">9</div>
+                        <div class="step-title">Complete Integration</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="final-step">
+                            <h3>Great Job! Now save and relax, we will do the work for you..!</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="wizard-actions">
+                    <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    <button class="btn btn-primary" id="saveBtn">Save</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Provider selection
+            document.querySelectorAll('.provider-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Access type selection
+            document.querySelectorAll('.access-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.access-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show/hide appropriate instructions and fields
+                    const accessType = this.dataset.access;
+                    
+                    // Hide all instructions
+                    document.querySelectorAll('.access-instructions').forEach(inst => {
+                        inst.style.display = 'none';
+                    });
+                    
+                    // Hide all auth fields
+                    document.querySelectorAll('.auth-fields').forEach(field => {
+                        field.style.display = 'none';
+                    });
+                    
+                    // Show selected instructions and fields
+                    const instructionId = accessType + '-instructions';
+                    const fieldId = accessType + '-fields';
+                    
+                    const instructionElement = document.getElementById(instructionId);
+                    const fieldElement = document.getElementById(fieldId);
+                    
+                    if (instructionElement) {
+                        instructionElement.style.display = 'block';
+                    }
+                    if (fieldElement) {
+                        fieldElement.style.display = 'block';
+                    }
+                });
+            });
+
+            // Account type selection
+            document.querySelectorAll('.account-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.account-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Billing toggle
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Save button
+            document.getElementById('saveBtn').addEventListener('click', function() {
+                const accessType = document.querySelector('.access-btn.active').dataset.access;
+                
+                // Validate required fields
+                const displayName = document.getElementById('displayName').value.trim();
+                if (!displayName) {
+                    alert('Please enter a display name for the account.');
+                    return;
+                }
+                
+                // Collect form data based on access type
+                const formData = {
+                    displayName: displayName,
+                    provider: document.querySelector('.provider-btn.active').dataset.provider,
+                    accessType: accessType,
+                    billing: document.querySelector('.toggle-btn.active').dataset.billing,
+                    accountType: document.querySelector('.account-btn.active').dataset.account,
+                    exportName: document.getElementById('exportName').value,
+                    startDate: document.getElementById('startDate').value
+                };
+
+                // Add authentication details based on selected type
+                if (accessType === 'iam') {
+                    const roleArn = document.getElementById('roleArn').value.trim();
+                    if (!roleArn) {
+                        alert('Please enter the Role ARN.');
+                        return;
+                    }
+                    formData.roleArn = roleArn;
+                } else if (accessType === 'accesskey') {
+                    const accessKeyId = document.getElementById('accessKeyId').value.trim();
+                    const secretAccessKey = document.getElementById('secretAccessKey').value.trim();
+                    
+                    if (!accessKeyId || !secretAccessKey) {
+                        alert('Please enter both Access Key ID and Secret Access Key.');
+                        return;
+                    }
+                    
+                    formData.accessKeyId = accessKeyId;
+                    formData.secretAccessKey = secretAccessKey;
+                    formData.region = document.getElementById('awsRegion').value;
+                } else if (accessType === 'cloudformation') {
+                    const stackName = document.getElementById('stackName').value.trim();
+                    const cfRoleArn = document.getElementById('cfRoleArn').value.trim();
+                    
+                    if (!stackName || !cfRoleArn) {
+                        alert('Please enter both Stack Name and Role ARN.');
+                        return;
+                    }
+                    
+                    formData.stackName = stackName;
+                    formData.cfRoleArn = cfRoleArn;
+                }
+
+                // Show loading state
+                const saveBtn = document.getElementById('saveBtn');
+                const originalText = saveBtn.textContent;
+                saveBtn.textContent = 'Saving...';
+                saveBtn.disabled = true;
+                
+                // Send data to backend API
+                fetch('/integration/api/accounts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Account integration created successfully!');
+                        window.location.href = '/integration/accounts';
+                    } else {
+                        alert('Error creating account integration: ' + data.error);
+                        saveBtn.textContent = originalText;
+                        saveBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error creating account integration. Please try again.');
+                    saveBtn.textContent = originalText;
+                    saveBtn.disabled = false;
+                });
+            });
+
+            // Cancel button
+            document.getElementById('cancelBtn').addEventListener('click', function() {
+                if (confirm('Are you sure you want to cancel? All changes will be lost.')) {
+                    window.location.href = '/';
+                }
+            });
+
+            // Generate policy functionality
+            document.querySelectorAll('.policy-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Call the API to generate policy
+                    fetch('/integration/api/policy/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            provider: document.querySelector('.provider-btn.active').dataset.provider
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Display policy in a modal or new window
+                            const policyWindow = window.open('', '_blank', 'width=600,height=400');
+                            policyWindow.document.write(`
+                                <html>
+                                    <head><title>AWS IAM Policy</title></head>
+                                    <body>
+                                        <h3>AWS IAM Policy for CloudSpend</h3>
+                                        <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow: auto;">
+${JSON.stringify(data.policy_json, null, 2)}
+                                        </pre>
+                                        <button onclick="navigator.clipboard.writeText('${JSON.stringify(data.policy_json, null, 2)}')">Copy Policy</button>
+                                    </body>
+                                </html>
+                            `);
+                        } else {
+                            alert('Error generating policy: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error generating policy');
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>

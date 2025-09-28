@@ -1,0 +1,517 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Terraform Analyzer - CloudLeakage{% endblock %}
+
+{% block extra_css %}
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <!-- D3.js for advanced visualizations -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Cytoscape.js for network graphs -->
+    <script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+    <!-- GoJS for professional diagrams -->
+    <script src="https://unpkg.com/gojs@2.3.13/release/go.js"></script>
+    <style>
+        #resource-map {
+            width: 100%;
+            height: 600px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            background: var(--bg-primary);
+        }
+        #resource-type-filters {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            <i class="fas fa-sitemap" style="margin-right: 12px; color: var(--primary-blue);"></i>
+            Terraform State Analyzer
+        </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-body">
+            <form id="terraform-upload-form">
+                <div style="display: flex; gap: 16px; align-items: center;">
+                    <div style="flex-grow: 1;">
+                        <label for="tfstate-file" style="display: block; margin-bottom: 8px; font-weight: 600;">Upload terraform.tfstate file:</label>
+                        <input type="file" id="tfstate-file" name="tfstate_file" accept=".tfstate,application/json" required style="width: 100%; padding: 12px; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="align-self: flex-end; padding: 12px 24px;">
+                        <i class="fas fa-cogs"></i> Analyze
+                    </button>
+                    <button type="button" onclick="analyzeWithAI()" class="btn btn-success" style="align-self: flex-end; padding: 12px 24px; margin-left: 8px;">
+                        <i class="fas fa-brain"></i> AI Analysis
+                    </button>
+                    <button type="button" onclick="generateDiagram()" class="btn btn-info" style="align-self: flex-end; padding: 12px 24px; margin-left: 8px;">
+                        <i class="fas fa-project-diagram"></i> Generate Diagram
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI Analysis Results -->
+    <div class="card" id="aiAnalysisCard" style="display: none; margin-bottom: 24px;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-brain" style="margin-right: 8px; color: var(--success-green);"></i>
+                AI Infrastructure Analysis
+            </h3>
+        </div>
+        <div class="card-body">
+            <div id="aiAnalysisContent">
+                <!-- AI analysis results will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Diagram Section -->
+    <div class="card" id="diagramCard" style="display: none; margin-bottom: 24px;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-sitemap" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                Architecture Diagram
+            </h3>
+        </div>
+        <div class="card-body">
+            <div id="diagramContainer" style="min-height: 500px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; background: #fafafa;">
+                <div id="mermaidDiagram"></div>
+            </div>
+            <div style="margin-top: 16px; text-align: center;">
+                <button onclick="exportDiagram()" class="btn btn-outline-primary">
+                    <i class="fas fa-download"></i> Export as PNG
+                </button>
+                <button onclick="copyDiagramCode()" class="btn btn-outline-secondary">
+                    <i class="fas fa-copy"></i> Copy Mermaid Code
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Result Section -->
+    <div style="display: grid; grid-template-columns: 1fr 350px; gap: 24px;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Resource Map</h3>
+            </div>
+            <div class="card-body">
+                <div id="resource-map"></div>
+            </div>
+        </div>
+        <div>
+            <div id="filter-container" class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h3 class="card-title">Filter by Type</h3>
+                </div>
+                <div class="card-body" id="resource-type-filters">
+                    <p>Upload a state file to see filters.</p>
+                </div>
+            </div>
+            <div id="details-container" class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Resource Details</h3>
+                </div>
+                <div class="card-body" id="resource-details">
+                    <p>Click on a node to see its details.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({ startOnLoad: true });
+        
+        let currentStateData = null;
+        document.getElementById('terraform-upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('tfstate-file');
+            if (fileInput.files.length === 0) {
+                alert('Please select a file to analyze.');
+                return;
+            }
+
+            // Read and store the file content for diagram generation
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    currentStateData = JSON.parse(e.target.result);
+                } catch (error) {
+                    console.error('Error parsing JSON:', error);
+                }
+            };
+            reader.readAsText(file);
+
+            const formData = new FormData();
+            formData.append('tfstate_file', file);
+
+            try {
+                const response = await fetch('/terraform/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.data && result.data.nodes) {
+                        visualize(result.data);
+                    } else {
+                        alert('No resources found in the Terraform state file.');
+                    }
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error during analysis:', error);
+                alert('An error occurred during analysis: ' + error.message);
+            }
+        });
+
+        let network = null;
+        let allNodes = [];
+
+        function visualize(data) {
+            allNodes = new vis.DataSet(data.nodes);
+            const edges = new vis.DataSet(data.edges);
+
+            const container = document.getElementById('resource-map');
+            const options = {
+                nodes: {
+                    shape: 'image',
+                    size: 30,
+                    font: {
+                        size: 14,
+                        color: '#333',
+                        face: 'Arial'
+                    },
+                    borderWidth: 2,
+                    shadow: true
+                },
+                edges: {
+                    arrows: 'to',
+                    color: '#848484'
+                },
+                physics: {
+                    enabled: true
+                },
+                groups: {
+                    useDefaultGroups: true
+                }
+            };
+            
+            network = new vis.Network(container, { nodes: allNodes, edges: edges }, options);
+
+            network.on("afterDrawing", function () {
+                const clusterMapping = {};
+                allNodes.forEach(node => {
+                    if (node.cluster) {
+                        if (!clusterMapping[node.cluster]) {
+                            clusterMapping[node.cluster] = [];
+                        }
+                        clusterMapping[node.cluster].push(node.id);
+                    }
+                });
+
+                for (const clusterId in clusterMapping) {
+                    network.clusterByConnection(clusterId, {
+                        joinCondition: function(nodeOptions) {
+                            return clusterMapping[clusterId].includes(nodeOptions.id) || nodeOptions.id === clusterId;
+                        },
+                        clusterNodeProperties: {
+                            label: clusterId.split('.').pop(),
+                            shape: 'box',
+                            color: 'rgba(100, 100, 255, 0.1)',
+                            allowSingleNodeCluster: true
+                        }
+                    });
+                }
+            });
+
+            network.on('click', function(params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    if (network.isCluster(nodeId)) {
+                        network.openCluster(nodeId);
+                    } else {
+                        const node = allNodes.get(nodeId);
+                        displayNodeDetails(node);
+                    }
+                }
+            });
+
+            populateFilters(data.resource_types);
+        }
+
+        function displayNodeDetails(node) {
+            const detailsContainer = document.getElementById('resource-details');
+            let html = `<h4>${node.title}</h4>`;
+            html += '<pre>' + JSON.stringify(node.attributes, null, 2) + '</pre>';
+            detailsContainer.innerHTML = html;
+        }
+
+        function populateFilters(resourceTypes) {
+            const filtersContainer = document.getElementById('resource-type-filters');
+            let html = '';
+            
+            if (resourceTypes && Array.isArray(resourceTypes) && resourceTypes.length > 0) {
+                resourceTypes.forEach(type => {
+                    html += `<div><input type="checkbox" id="${type}" name="${type}" value="${type}" checked onchange="updateFilters()"> <label for="${type}">${type}</label></div>`;
+                });
+            } else {
+                html = '<p>No resource types found in the state file.</p>';
+            }
+            
+            filtersContainer.innerHTML = html;
+        }
+
+        function updateFilters() {
+            const selectedTypes = [];
+            const checkboxes = document.querySelectorAll('#resource-type-filters input[type=checkbox]');
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    selectedTypes.push(checkbox.value);
+                }
+            });
+
+            const filteredNodes = allNodes.get({
+                filter: function(item) {
+                    return selectedTypes.includes(item.group);
+                }
+            });
+            
+            network.setData({ nodes: new vis.DataSet(filteredNodes), edges: network.body.data.edges });
+        }
+
+        // Generate Diagram function
+        async function generateDiagram() {
+            if (!currentStateData) {
+                alert('Please upload and analyze a Terraform state file first.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/terraform/api/generate-diagram', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stateData: currentStateData })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('diagramCard').style.display = 'block';
+                    document.getElementById('mermaidDiagram').innerHTML = result.diagram;
+                    currentDiagramCode = result.diagram.replace(/<\/?div[^>]*>/g, ''); // Store clean Mermaid code
+                    mermaid.init();
+                    
+                    // Scroll to diagram
+                    document.getElementById('diagramCard').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('Error generating diagram: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error generating diagram:', error);
+                alert('Failed to generate diagram: ' + error.message);
+            }
+        }
+
+        // Export diagram as PNG
+        function exportDiagram() {
+            const svg = document.querySelector('#mermaidDiagram svg');
+            if (!svg) {
+                alert('Please generate a diagram first');
+                return;
+            }
+            
+            // Create canvas and convert SVG to PNG
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const data = new XMLSerializer().serializeToString(svg);
+            const img = new Image();
+            
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                // Download as PNG
+                const link = document.createElement('a');
+                link.download = 'terraform-diagram.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            };
+            
+            img.src = 'data:image/svg+xml;base64,' + btoa(data);
+        }
+
+        // Copy Mermaid code to clipboard
+        function copyDiagramCode() {
+            if (!currentDiagramCode) {
+                alert('Please generate a diagram first');
+                return;
+            }
+            
+            navigator.clipboard.writeText(currentDiagramCode).then(() => {
+                alert('Mermaid code copied to clipboard!');
+            });
+        }
+
+        let currentDiagramCode = '';
+        
+        // AI Analysis functionality
+        async function analyzeWithAI() {
+            if (!currentStateData) {
+                alert('Please upload a Terraform state file first');
+                return;
+            }
+            
+            // Show AI analysis card and loading state
+            document.getElementById('aiAnalysisCard').style.display = 'block';
+            document.getElementById('aiAnalysisContent').innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary-blue); margin-bottom: 16px;"></i>
+                    <h4>AI is analyzing your infrastructure...</h4>
+                    <p>This may take a few moments</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/terraform/api/ai-analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stateData: currentStateData })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('AI Analysis response:', result);
+                
+                if (result.success) {
+                    displayAIAnalysis(result.analysis);
+                } else {
+                    document.getElementById('aiAnalysisContent').innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5><i class="fas fa-exclamation-triangle"></i> Analysis Failed</h5>
+                            <p>${result.error}</p>
+                            ${!result.ai_available ? '<p><strong>Note:</strong> Set GEMINI_API_KEY environment variable to enable AI analysis.</p>' : ''}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('AI Analysis error:', error);
+                document.getElementById('aiAnalysisContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Error</h5>
+                        <p>Failed to analyze infrastructure: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayAIAnalysis(analysis) {
+            const content = document.getElementById('aiAnalysisContent');
+            
+            let html = `
+                <div class="row" style="margin-bottom: 24px;">
+                    <div class="col-md-4">
+                        <div class="metric-card" style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: var(--primary-blue);">${analysis.findings.length}</div>
+                            <div style="color: #666;">Resources Found</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card" style="background: #fff3cd; padding: 20px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #856404;">${analysis.security_suggestions.length}</div>
+                            <div style="color: #666;">Security Issues</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card" style="background: #d1ecf1; padding: 20px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #0c5460;">${analysis.cost_suggestions.length}</div>
+                            <div style="color: #666;">Cost Optimizations</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Findings Section
+            if (analysis.findings.length > 0) {
+                html += `
+                    <div style="margin-bottom: 24px;">
+                        <h4><i class="fas fa-search" style="color: var(--primary-blue);"></i> Infrastructure Findings</h4>
+                `;
+                analysis.findings.forEach(finding => {
+                    html += `
+                        <div class="alert alert-info" style="margin-bottom: 12px;">
+                            <strong>${finding.title}</strong><br>
+                            ${finding.description}
+                            ${finding.resource_type ? `<br><span class="badge badge-info">${finding.resource_type}</span>` : ''}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            
+            // Security Suggestions
+            if (analysis.security_suggestions.length > 0) {
+                html += `
+                    <div style="margin-bottom: 24px;">
+                        <h4><i class="fas fa-shield-alt" style="color: #856404;"></i> Security Recommendations</h4>
+                `;
+                analysis.security_suggestions.forEach(suggestion => {
+                    html += `
+                        <div class="alert alert-warning" style="margin-bottom: 12px;">
+                            <strong>${suggestion.title}</strong><br>
+                            ${suggestion.recommendation}
+                            ${suggestion.priority ? `<br><span class="badge badge-warning">${suggestion.priority} priority</span>` : ''}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            
+            // Cost Suggestions
+            if (analysis.cost_suggestions.length > 0) {
+                html += `
+                    <div style="margin-bottom: 24px;">
+                        <h4><i class="fas fa-dollar-sign" style="color: #0c5460;"></i> Cost Optimization</h4>
+                `;
+                analysis.cost_suggestions.forEach(suggestion => {
+                    html += `
+                        <div class="alert alert-info" style="margin-bottom: 12px;">
+                            <strong>${suggestion.title}</strong><br>
+                            ${suggestion.recommendation || suggestion.description}
+                            ${suggestion.potential_savings ? `<br><span class="badge badge-success">Potential savings: ${suggestion.potential_savings}</span>` : ''}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            
+            content.innerHTML = html;
+        }
+    </script>
+{% endblock %}

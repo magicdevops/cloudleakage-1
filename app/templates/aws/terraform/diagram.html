@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terraform Architecture Diagram - CloudLeakage</title>
+    <link href="{{ url_for('static', filename='css/cloudspend-style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="icon">☁️</div>
+                    <span>CloudSpend</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <div class="nav-item">
+                        <a href="/" class="nav-link">
+                            <div class="icon"><i class="fas fa-tachometer-alt"></i></div>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Infrastructure</div>
+                    <div class="nav-item">
+                        <a href="/terraform/diagram" class="nav-link active">
+                            <div class="icon"><i class="fas fa-project-diagram"></i></div>
+                            <span>Architecture Diagram</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area">
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-title">
+                        <i class="fas fa-project-diagram" style="margin-right: 12px; color: var(--primary-blue);"></i>
+                        Terraform Architecture Diagram
+                    </div>
+                </div>
+                
+                <!-- Upload Section -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-upload" style="margin-right: 8px;"></i>
+                            Upload Terraform State File
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; margin-bottom: 16px;"></i>
+                            <h4>Drop your terraform.tfstate file here</h4>
+                            <p>or click to browse and select a file</p>
+                            <input type="file" id="fileInput" accept=".tfstate,.json" style="display: none;" onchange="handleFileUpload(event)">
+                        </div>
+                        
+                        <div id="fileInfo" style="display: none; margin-top: 16px;">
+                            <span id="fileName"></span>
+                            <button onclick="generateDiagram()" class="btn btn-primary">Generate Diagram</button>
+                            <button onclick="analyzeWithAI()" class="btn btn-success" style="margin-left: 8px;">
+                                <i class="fas fa-brain"></i> AI Analysis
+                            </button>
+                        </div>
+                        
+                        <div style="margin-top: 16px;">
+                            <button onclick="testDiagram()" class="btn btn-secondary">Test with Sample Data</button>
+                            <button onclick="testMinimal()" class="btn btn-info" style="margin-left: 8px;">Minimal Test</button>
+                            <button onclick="testUltraMinimal()" class="btn btn-primary" style="margin-left: 8px;">Ultra Minimal</button>
+                            <button onclick="testBackend()" class="btn btn-warning" style="margin-left: 8px;">Test Backend</button>
+                            <button onclick="testTerraformBackend()" class="btn btn-success" style="margin-left: 8px;">Test Terraform Backend</button>
+                            <button onclick="debugTerraform()" class="btn btn-danger" style="margin-left: 8px;">Debug API</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Analysis Results -->
+                <div class="card" id="aiAnalysisCard" style="display: none; margin-bottom: 24px;">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-brain" style="margin-right: 8px; color: var(--success-green);"></i>
+                            AI Infrastructure Analysis
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="aiAnalysisContent">
+                            <!-- AI analysis results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diagram Display -->
+                <div class="card" id="diagramCard" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title">Architecture Diagram</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="diagram-controls" style="margin-bottom: 16px;">
+                            <button onclick="resetLayout()" class="btn btn-secondary">Reset Layout</button>
+                            <button onclick="fitToScreen()" class="btn btn-secondary">Fit to Screen</button>
+                            <select id="layoutSelect" onchange="changeLayout()" class="form-select" style="width: auto; display: inline-block; margin-left: 8px;">
+                                <option value="dagre">Hierarchical</option>
+                                <option value="grid">Grid</option>
+                                <option value="circle">Circle</option>
+                                <option value="breadthfirst">Breadth First</option>
+                            </select>
+                        </div>
+                        <div id="diagramContainer" style="min-height: 600px; border: 1px solid #e0e0e0; border-radius: 8px;">
+                            <div id="cy" style="width: 100%; height: 600px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentStateData = null;
+        let cy = null;
+        
+        // Check if libraries loaded correctly
+        window.addEventListener('load', function() {
+            console.log('Cytoscape available:', typeof cytoscape !== 'undefined');
+            if (typeof cytoscape !== 'undefined') {
+                console.log('Cytoscape version:', cytoscape.version);
+            }
+        });
+        
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileInfo').style.display = 'block';
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    currentStateData = JSON.parse(e.target.result);
+                } catch (error) {
+                    alert('Invalid JSON file');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        async function generateDiagram() {
+            if (!currentStateData) {
+                alert('No state data loaded. Please upload a Terraform state file first.');
+                return;
+            }
+            
+            try {
+                console.log('Sending state data to backend:', currentStateData);
+                
+                const response = await fetch('/terraform/api/generate-diagram', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stateData: currentStateData })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('Backend response:', result);
+                
+                if (result.success && result.graphData && result.graphData.elements) {
+                    document.getElementById('diagramCard').style.display = 'block';
+                    console.log('Graph data elements count:', result.graphData.elements.length);
+                    console.log('All elements:', result.graphData.elements);
+                    
+                    // Deep validation of elements structure
+                    const validElements = result.graphData.elements.filter((element, index) => {
+                        console.log(`Validating element ${index}:`, element);
+                        
+                        if (!element) {
+                            console.warn(`Element ${index} is null/undefined:`, element);
+                            return false;
+                        }
+                        
+                        if (typeof element !== 'object') {
+                            console.warn(`Element ${index} is not an object:`, element);
+                            return false;
+                        }
+                        
+                        if (!element.data) {
+                            console.warn(`Element ${index} has no data property:`, element);
+                            return false;
+                        }
+                        
+                        if (typeof element.data !== 'object') {
+                            console.warn(`Element ${index} data is not an object:`, element.data);
+                            return false;
+                        }
+                        
+                        if (!element.data.id) {
+                            console.warn(`Element ${index} has no id:`, element.data);
+                            return false;
+                        }
+                        
+                        return true;
+                    });
+                    
+                    if (validElements.length === 0) {
+                        alert('No valid elements found in the diagram data');
+                        return;
+                    }
+                    
+                    console.log('Valid elements count:', validElements.length);
+                    console.log('Calling initializeCytoscape with:', { elements: validElements, metadata: result.graphData.metadata });
+                    
+                    initializeCytoscape({ elements: validElements, metadata: result.graphData.metadata });
+                } else {
+                    console.error('Failed to generate diagram:', result.error);
+                    alert('Failed to generate diagram: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error generating diagram:', error);
+                alert('Error generating diagram: ' + error.message);
+            }
+        }
+        
+        function initializeCytoscape(graphData) {
+            // Check if Cytoscape.js is loaded
+            if (typeof cytoscape === 'undefined') {
+                console.error('Cytoscape.js is not loaded');
+                alert('Cytoscape.js library failed to load');
+                return;
+            }
+            
+            // Validate graphData structure
+            if (!graphData || !graphData.elements || !Array.isArray(graphData.elements)) {
+                console.error('Invalid graph data structure:', graphData);
+                alert('Invalid graph data received from server');
+                return;
+            }
+            
+            console.log('Initializing Cytoscape with', graphData.elements.length, 'elements');
+            
+            // Validate each element has required properties
+            for (let i = 0; i < graphData.elements.length; i++) {
+                const element = graphData.elements[i];
+                if (!element.data || !element.data.id) {
+                    console.error('Invalid element at index', i, ':', element);
+                    alert('Invalid element data found - missing id');
+                    return;
+                }
+            }
+            
+            try {
+                console.log('About to initialize Cytoscape with elements:', graphData.elements);
+                
+                // Safe string conversion function
+                const safeString = (value) => {
+                    if (value === null || value === undefined) {
+                        return '';
+                    }
+                    if (typeof value === 'string') {
+                        return value;
+                    }
+                    try {
+                        return String(value);
+                    } catch (e) {
+                        console.warn('Failed to convert value to string:', value, e);
+                        return '';
+                    }
+                };
+                
+                // Validate each element more thoroughly
+                const validatedElements = graphData.elements.map((element, index) => {
+                    try {
+                        if (!element || typeof element !== 'object') {
+                            console.error(`Element ${index} is not an object:`, element);
+                            return null;
+                        }
+                        
+                        if (!element.data || typeof element.data !== 'object') {
+                            console.error(`Element ${index} has invalid data:`, element);
+                            return null;
+                        }
+                        
+                        if (!element.data.id) {
+                            console.error(`Element ${index} missing id:`, element);
+                            return null;
+                        }
+                        
+                        // Ensure all string properties are safely converted
+                        const validatedElement = {
+                            data: {
+                                id: safeString(element.data.id),
+                                label: safeString(element.data.label),
+                                type: safeString(element.data.type),
+                                category: safeString(element.data.category),
+                                provider: safeString(element.data.provider),
+                                name: safeString(element.data.name)
+                            }
+                        };
+                        
+                        // Add source/target for edges
+                        if (element.data.source !== undefined && element.data.source !== null) {
+                            validatedElement.data.source = safeString(element.data.source);
+                        }
+                        if (element.data.target !== undefined && element.data.target !== null) {
+                            validatedElement.data.target = safeString(element.data.target);
+                        }
+                        
+                        // Add parent for compound nodes
+                        if (element.data.parent !== undefined && element.data.parent !== null) {
+                            validatedElement.data.parent = safeString(element.data.parent);
+                        }
+                        
+                        console.log(`Validated element ${index}:`, validatedElement);
+                        return validatedElement;
+                    } catch (elementError) {
+                        console.error(`Error processing element ${index}:`, elementError, element);
+                        return null;
+                    }
+                }).filter(element => element !== null);
+                
+                console.log('Final validated elements:', validatedElements);
+                
+                if (validatedElements.length === 0) {
+                    throw new Error('No valid elements after validation');
+                }
+                
+                // Initialize Cytoscape with enhanced styling and layouts
+                console.log('Initializing Cytoscape...');
+                cy = cytoscape({
+                container: document.getElementById('cy'),
+                
+                elements: validatedElements,
+                
+                style: [
+                    // Node styles by category
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': '#ffffff',
+                            'border-width': 2,
+                            'border-color': '#666',
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'font-weight': 'bold',
+                            'width': 80,
+                            'height': 60,
+                            'shape': 'roundrectangle'
+                        }
+                    },
+                    
+                    // Network resources
+                    {
+                        selector: 'node[category="network"]',
+                        style: {
+                            'background-color': '#e1f5fe',
+                            'border-color': '#01579b',
+                            'color': '#01579b'
+                        }
+                    },
+                    
+                    // Compute resources
+                    {
+                        selector: 'node[category="compute"]',
+                        style: {
+                            'background-color': '#fff3e0',
+                            'border-color': '#e65100',
+                            'color': '#e65100'
+                        }
+                    },
+                    
+                    // Storage resources
+                    {
+                        selector: 'node[category="storage"]',
+                        style: {
+                            'background-color': '#f3e5f5',
+                            'border-color': '#4a148c',
+                            'color': '#4a148c'
+                        }
+                    },
+                    
+                    // Security resources
+                    {
+                        selector: 'node[category="security"]',
+                        style: {
+                            'background-color': '#ffebee',
+                            'border-color': '#b71c1c',
+                            'color': '#b71c1c'
+                        }
+                    },
+                    
+                    // Database resources
+                    {
+                        selector: 'node[category="database"]',
+                        style: {
+                            'background-color': '#e8f5e8',
+                            'border-color': '#1b5e20',
+                            'color': '#1b5e20'
+                        }
+                    },
+                    
+                    // Parent nodes (category groups)
+                    {
+                        selector: 'node[type="parent"]',
+                        style: {
+                            'background-opacity': 0.1,
+                            'border-width': 3,
+                            'border-style': 'dashed',
+                            'label': 'data(label)',
+                            'text-valign': 'top',
+                            'text-halign': 'center',
+                            'font-size': '16px',
+                            'font-weight': 'bold',
+                            'padding': '20px'
+                        }
+                    },
+                    
+                    // Edges (connections)
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 2,
+                            'line-color': '#666',
+                            'target-arrow-color': '#666',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'arrow-scale': 1.2
+                        }
+                    },
+                    
+                    // Dependency edges
+                    {
+                        selector: 'edge[type="dependency"]',
+                        style: {
+                            'line-color': '#2196f3',
+                            'target-arrow-color': '#2196f3',
+                            'line-style': 'solid'
+                        }
+                    },
+                    
+                    // Reference edges
+                    {
+                        selector: 'edge[type="reference"]',
+                        style: {
+                            'line-color': '#ff9800',
+                            'target-arrow-color': '#ff9800',
+                            'line-style': 'dashed'
+                        }
+                    }
+                ],
+                
+                layout: {
+                    name: 'breadthfirst',
+                    directed: true,
+                    spacingFactor: 1.75
+                },
+                
+                // Enable panning and zooming
+                zoomingEnabled: true,
+                userZoomingEnabled: true,
+                panningEnabled: true,
+                userPanningEnabled: true,
+                
+                // Interaction settings
+                boxSelectionEnabled: true,
+                selectionType: 'single'
+            });
+            
+                // Add click handlers for nodes
+                cy.on('tap', 'node', function(evt) {
+                    const node = evt.target;
+                    const data = node.data();
+                    showResourceDetails(data);
+                });
+                
+                // Fit to screen initially
+                cy.fit();
+                
+            } catch (error) {
+                console.error('Error initializing Cytoscape:', error);
+                alert('Failed to initialize diagram: ' + error.message);
+            }
+        }
+        
+        function testDiagram() {
+            // Test with sample data to verify Cytoscape.js is working
+            const sampleData = {
+                success: true,
+                elements: [
+                    { data: { id: 'vpc', label: '🌐 main-vpc', category: 'network', type: 'aws_vpc' } },
+                    { data: { id: 'subnet', label: '📡 public-subnet', category: 'network', type: 'aws_subnet' } },
+                    { data: { id: 'instance', label: '🖥️ web-server', category: 'compute', type: 'aws_instance' } },
+                    { data: { id: 'vpc-subnet', source: 'vpc', target: 'subnet', type: 'dependency' } },
+                    { data: { id: 'subnet-instance', source: 'subnet', target: 'instance', type: 'dependency' } }
+                ]
+            };
+            
+            document.getElementById('diagramCard').style.display = 'block';
+            initializeCytoscape(sampleData);
+        }
+        
+        function testMinimal() {
+            // Absolute minimal test to isolate the issue
+            console.log('Testing minimal Cytoscape initialization...');
+            
+            if (typeof cytoscape === 'undefined') {
+                alert('Cytoscape.js is not loaded!');
+                return;
+            }
+            
+            document.getElementById('diagramCard').style.display = 'block';
+            
+            try {
+                cy = cytoscape({
+                    container: document.getElementById('cy'),
+                    elements: [
+                        { data: { id: 'a', label: 'Node A' } },
+                        { data: { id: 'b', label: 'Node B' } },
+                        { data: { id: 'ab', source: 'a', target: 'b' } }
+                    ],
+                    style: [
+                        {
+                            selector: 'node',
+                            style: {
+                                'background-color': '#666',
+                                'label': 'data(label)'
+                            }
+                        },
+                        {
+                            selector: 'edge',
+                            style: {
+                                'width': 3,
+                                'line-color': '#ccc',
+                                'target-arrow-color': '#ccc',
+                                'target-arrow-shape': 'triangle'
+                            }
+                        }
+                    ],
+                    layout: {
+                        name: 'grid',
+                        rows: 1
+                    }
+                });
+                
+                console.log('Minimal test successful!');
+                alert('Minimal test successful! Cytoscape.js is working.');
+                
+            } catch (error) {
+                console.error('Minimal test failed:', error);
+                alert('Minimal test failed: ' + error.message);
+            }
+        }
+        
+        function testUltraMinimal() {
+            // Ultra minimal test with just one node
+            console.log('Testing ultra minimal Cytoscape initialization...');
+            
+            if (typeof cytoscape === 'undefined') {
+                alert('Cytoscape.js is not loaded!');
+                return;
+            }
+            
+            document.getElementById('diagramCard').style.display = 'block';
+            
+            try {
+                // Clear any existing instance
+                if (cy) {
+                    cy.destroy();
+                }
+                
+                console.log('Creating ultra minimal Cytoscape instance...');
+                cy = cytoscape({
+                    container: document.getElementById('cy'),
+                    elements: [
+                        { 
+                            data: { 
+                                id: 'single-node',
+                                label: 'Test Node',
+                                type: 'test',
+                                category: 'test',
+                                provider: 'test',
+                                name: 'Test Node'
+                            } 
+                        }
+                    ],
+                    style: [
+                        {
+                            selector: 'node',
+                            style: {
+                                'background-color': '#4CAF50',
+                                'label': 'data(label)',
+                                'text-valign': 'center',
+                                'text-halign': 'center',
+                                'width': 60,
+                                'height': 60
+                            }
+                        }
+                    ],
+                    layout: {
+                        name: 'preset'
+                    }
+                });
+                
+                console.log('Ultra minimal test successful! Cytoscape instance:', cy);
+                alert('Ultra minimal test successful! Single node displayed.');
+                
+            } catch (error) {
+                console.error('Ultra minimal test failed:', error);
+                console.error('Error stack:', error.stack);
+                alert('Ultra minimal test failed: ' + error.message);
+            }
+        }
+        
+        async function testBackend() {
+            // Test the backend endpoint with minimal data
+            console.log('Testing backend endpoint...');
+            
+            try {
+                const response = await fetch('/terraform/api/test-diagram', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const result = await response.json();
+                console.log('Backend test response:', result);
+                
+                if (result.success && result.graphData && result.graphData.elements) {
+                    document.getElementById('diagramCard').style.display = 'block';
+                    console.log('Backend test elements:', result.graphData.elements);
+                    initializeCytoscape(result.graphData);
+                    alert('Backend test successful!');
+                } else {
+                    console.error('Backend test failed:', result.error);
+                    alert('Backend test failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Backend test error:', error);
+                alert('Backend test error: ' + error.message);
+            }
+        }
+        
+        function showResourceDetails(data) {
+            // Show resource details in a modal or sidebar
+            console.log('Resource details:', data);
+            alert(`Resource: ${data.label}\nType: ${data.type}\nCategory: ${data.category}`);
+        }
+        
+        function resetLayout() {
+            if (cy) {
+                cy.layout({
+                    name: document.getElementById('layoutSelect').value,
+                    rankDir: 'TB',
+                    spacingFactor: 1.5,
+                    nodeSep: 50,
+                    rankSep: 100
+                }).run();
+            }
+        }
+        
+        function fitToScreen() {
+            if (cy) {
+                cy.fit();
+            }
+        }
+        
+        function changeLayout() {
+            const layoutName = document.getElementById('layoutSelect').value;
+            if (cy) {
+                let layoutOptions = {
+                    name: layoutName
+                };
+                
+                // Customize layout options based on type
+                switch(layoutName) {
+                    case 'dagre':
+                        layoutOptions.rankDir = 'TB';
+                        layoutOptions.spacingFactor = 1.5;
+                        layoutOptions.nodeSep = 50;
+                        layoutOptions.rankSep = 100;
+                        break;
+                    case 'grid':
+                        layoutOptions.rows = 3;
+                        break;
+                    case 'circle':
+                        layoutOptions.radius = 200;
+                        break;
+                    case 'breadthfirst':
+                        layoutOptions.directed = true;
+                        layoutOptions.spacingFactor = 1.75;
+                        break;
+                }
+                
+                cy.layout(layoutOptions).run();
+            }
+        }
+        
+        async function testTerraformBackend() {
+            // Test the Terraform backend with sample data
+            console.log('Testing Terraform backend endpoint...');
+            
+            try {
+                const response = await fetch('/terraform/api/test-diagram', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const result = await response.json();
+                console.log('Terraform backend test response:', result);
+                
+                if (result.success && result.graphData && result.graphData.elements) {
+                    document.getElementById('diagramCard').style.display = 'block';
+                    console.log('Terraform backend test elements:', result.graphData.elements);
+                    initializeCytoscape(result.graphData);
+                    alert('Terraform backend test successful!');
+                } else {
+                    console.error('Terraform backend test failed:', result.error);
+                    alert('Terraform backend test failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Terraform backend test error:', error);
+                alert('Terraform backend test error: ' + error.message);
+            }
+        }
+        
+        async function debugTerraform() {
+            // Debug API endpoint to identify the issue
+            console.log('Testing debug API endpoint...');
+            
+            try {
+                const response = await fetch('/terraform/api/debug', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                console.log('Debug API response:', result);
+                
+                if (result.success && result.test_data && result.test_data.elements) {
+                    document.getElementById('diagramCard').style.display = 'block';
+                    console.log('Debug API elements:', result.test_data.elements);
+                    
+                    // Test with minimal data structure
+                    const testData = {
+                        elements: result.test_data.elements,
+                        metadata: { total_resources: 1 }
+                    };
+                    
+                    initializeCytoscape(testData);
+                    alert('Debug API test successful!');
+                } else {
+                    console.error('Debug API test failed:', result.error);
+                    alert('Debug API test failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Debug API test error:', error);
+                alert('Debug API test error: ' + error.message);
+            }
+        }
+        
+        async function analyzeWithAI() {
+            if (!currentStateData) {
+                alert('Upload a Terraform file first');
+                return;
+            }
+            
+            document.getElementById('aiAnalysisCard').style.display = 'block';
+            document.getElementById('aiAnalysisContent').innerHTML = '<div style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> AI analyzing...</div>';
+            
+            try {
+                const response = await fetch('/terraform/api/ai-analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stateData: currentStateData })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    let html = `<h4>Findings: ${result.analysis.findings.length}</h4>`;
+                    result.analysis.findings.forEach(f => {
+                        html += `<div class="alert alert-info"><strong>${f.title}</strong><br>${f.description}</div>`;
+                    });
+                    
+                    html += `<h4>Security: ${result.analysis.security_suggestions.length}</h4>`;
+                    result.analysis.security_suggestions.forEach(s => {
+                        html += `<div class="alert alert-warning"><strong>${s.title}</strong><br>${s.recommendation}</div>`;
+                    });
+                    
+                    document.getElementById('aiAnalysisContent').innerHTML = html;
+                } else {
+                    document.getElementById('aiAnalysisContent').innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('aiAnalysisContent').innerHTML = `<div class="alert alert-danger">Failed: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

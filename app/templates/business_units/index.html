@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Units - CloudSpend</title>
+    <link href="{{ url_for('static', filename='css/cloudspend-style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="icon">☁️</div>
+                    <span>CloudSpend</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <div class="nav-item">
+                        <a href="/" class="nav-link">
+                            <div class="icon"><i class="fas fa-tachometer-alt"></i></div>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/business-units" class="nav-link active">
+                            <div class="icon"><i class="fas fa-users"></i></div>
+                            <span>Business Units</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/budgets" class="nav-link">
+                            <div class="icon"><i class="fas fa-chart-bar"></i></div>
+                            <span>Budgets</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/reports" class="nav-link">
+                            <div class="icon"><i class="fas fa-file-alt"></i></div>
+                            <span>Reports</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Settings</div>
+                    <div class="nav-item">
+                        <a href="/integration" class="nav-link">
+                            <div class="icon"><i class="fas fa-plug"></i></div>
+                            <span>Account Integration</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area">
+                <div class="header">
+                    <div>
+                        <h1 class="header-title">Business Units</h1>
+                        <p class="text-muted">Organize and track costs by business unit</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Add Business Unit
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Business Units Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">Engineering</div>
+                            <div class="metric-icon">
+                                <i class="fas fa-code"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value">$1,247.89</div>
+                        <div class="metric-change positive">
+                            <i class="fas fa-arrow-down"></i>
+                            -5.2% from last month
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">Marketing</div>
+                            <div class="metric-icon">
+                                <i class="fas fa-bullhorn"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value">$623.45</div>
+                        <div class="metric-change negative">
+                            <i class="fas fa-arrow-up"></i>
+                            +12.3% from last month
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">Operations</div>
+                            <div class="metric-icon">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value">$345.67</div>
+                        <div class="metric-change neutral">
+                            <i class="fas fa-minus"></i>
+                            No change
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Business Unit Details</h3>
+                        <p class="card-subtitle">Cost breakdown and resource allocation</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Business Unit</th>
+                                        <th>Current Month</th>
+                                        <th>Last Month</th>
+                                        <th>Change</th>
+                                        <th>Resources</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <div style="width: 32px; height: 32px; background: var(--primary-blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white;">
+                                                    <i class="fas fa-code"></i>
+                                                </div>
+                                                Engineering
+                                            </div>
+                                        </td>
+                                        <td>$1,247.89</td>
+                                        <td>$1,315.20</td>
+                                        <td>
+                                            <span class="metric-change positive">
+                                                <i class="fas fa-arrow-down"></i>
+                                                -5.2%
+                                            </span>
+                                        </td>
+                                        <td>47 resources</td>
+                                        <td>
+                                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                                                View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <div style="width: 32px; height: 32px; background: var(--secondary-green); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white;">
+                                                    <i class="fas fa-bullhorn"></i>
+                                                </div>
+                                                Marketing
+                                            </div>
+                                        </td>
+                                        <td>$623.45</td>
+                                        <td>$555.12</td>
+                                        <td>
+                                            <span class="metric-change negative">
+                                                <i class="fas fa-arrow-up"></i>
+                                                +12.3%
+                                            </span>
+                                        </td>
+                                        <td>23 resources</td>
+                                        <td>
+                                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                                                View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <div style="width: 32px; height: 32px; background: var(--warning-yellow); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white;">
+                                                    <i class="fas fa-cogs"></i>
+                                                </div>
+                                                Operations
+                                            </div>
+                                        </td>
+                                        <td>$345.67</td>
+                                        <td>$345.67</td>
+                                        <td>
+                                            <span class="metric-change neutral">
+                                                <i class="fas fa-minus"></i>
+                                                0%
+                                            </span>
+                                        </td>
+                                        <td>15 resources</td>
+                                        <td>
+                                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                                                View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

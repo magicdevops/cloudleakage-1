@@ -1,0 +1,27 @@
+<!-- Reusable Metrics Card Component -->
+{% macro metrics_card(title, value, icon, color="primary", subtitle="", trend=None) %}
+<div class="metric-card" style="border-left: 4px solid var(--{{ color }});">
+    <div class="metric-header">
+        <div class="metric-icon" style="color: var(--{{ color }});">
+            <i class="{{ icon }}"></i>
+        </div>
+        {% if trend %}
+        <div class="metric-trend {{ 'positive' if trend > 0 else 'negative' if trend < 0 else 'neutral' }}">
+            <i class="fas fa-arrow-{{ 'up' if trend > 0 else 'down' if trend < 0 else 'right' }}"></i>
+            {{ "%.1f"|format(abs(trend)) }}%
+        </div>
+        {% endif %}
+    </div>
+    <div class="metric-value">{{ value }}</div>
+    <div class="metric-label">{{ title }}</div>
+    {% if subtitle %}
+    <div class="metric-subtitle">{{ subtitle }}</div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+<!-- Usage Examples:
+{{ metrics_card("Total Instances", "42", "fas fa-server", "primary") }}
+{{ metrics_card("Monthly Cost", "$1,234", "fas fa-dollar-sign", "success", "vs last month", 5.2) }}
+{{ metrics_card("Stopped Instances", "8", "fas fa-stop-circle", "warning", "potential savings") }}
+-->

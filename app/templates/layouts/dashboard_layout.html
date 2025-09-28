@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ title }} - CloudLeakage{% endblock %}</title>
+    <link href="{{ url_for('static', filename='css/cloudspend-style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Include Sidebar Component -->
+        {% include 'components/sidebar.html' %}
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area">
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-title">
+                        {% block header_icon %}<i class="fas fa-tachometer-alt"></i>{% endblock %}
+                        {% block header_title %}{{ title }}{% endblock %}
+                    </div>
+                    <div class="header-actions">
+                        {% block header_actions %}
+                        <button onclick="refreshAllData()" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh Data
+                        </button>
+                        {% endblock %}
+                    </div>
+                </div>
+                
+                <!-- Page Content -->
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Global Scripts -->
+    <script>
+        // Global utility functions
+        function showLoading(elementId) {
+            document.getElementById(elementId).innerHTML = '<div class="loading">Loading...</div>';
+        }
+        
+        function showError(elementId, message) {
+            document.getElementById(elementId).innerHTML = `<div class="error-message">${message}</div>`;
+        }
+        
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+        
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString();
+        }
+        
+        // Default refresh function (can be overridden)
+        function refreshAllData() {
+            location.reload();
+        }
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

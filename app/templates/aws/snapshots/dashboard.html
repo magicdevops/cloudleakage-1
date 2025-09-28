@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapshots & AMI Dashboard - CloudLeakage</title>
+    <link href="{{ url_for('static', filename='css/cloudspend-style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="icon">☁️</div>
+                    <span>CloudSpend</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <div class="nav-item">
+                        <a href="/" class="nav-link">
+                            <div class="icon"><i class="fas fa-tachometer-alt"></i></div>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Snapshots & AMI</div>
+                    <div class="nav-item">
+                        <a href="/snapshots" class="nav-link active">
+                            <div class="icon"><i class="fas fa-hdd"></i></div>
+                            <span>Snapshots & AMI Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area">
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-title">
+                        <i class="fas fa-hdd" style="margin-right: 12px; color: var(--primary-blue);"></i>
+                        Snapshots & AMI Dashboard
+                    </div>
+                    <div class="header-actions">
+                        <button onclick="refreshAllData()" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh All Data
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Account & Region Selector - Compact Right Side -->
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+                    <div class="compact-selector-box" style="display: flex; gap: 16px; align-items: center; background: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;">
+                        <div>
+                            <label for="accountSelect" style="display: block; margin-bottom: 4px; font-weight: 600; color: #666; font-size: 12px;">AWS Account:</label>
+                            <select id="accountSelect" onchange="loadAccountData()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 180px;">
+                                <option value="">Loading accounts...</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="regionSelect" style="display: block; margin-bottom: 4px; font-weight: 600; color: #666; font-size: 12px;">Region:</label>
+                            <select id="regionSelect" onchange="loadSnapshotData()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 150px;">
+                                <option value="">All Regions</option>
+                                <option value="us-east-1">US East (N. Virginia)</option>
+                                <option value="us-east-2">US East (Ohio)</option>
+                                <option value="us-west-1">US West (N. California)</option>
+                                <option value="us-west-2">US West (Oregon)</option>
+                                <option value="ca-central-1">Canada (Central)</option>
+                                <option value="eu-central-1">Europe (Frankfurt)</option>
+                                <option value="eu-west-1">Europe (Ireland)</option>
+                                <option value="eu-west-2">Europe (London)</option>
+                                <option value="eu-west-3">Europe (Paris)</option>
+                                <option value="eu-north-1">Europe (Stockholm)</option>
+                                <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
+                                <option value="ap-northeast-2">Asia Pacific (Seoul)</option>
+                                <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                                <option value="ap-southeast-2">Asia Pacific (Sydney)</option>
+                                <option value="ap-south-1">Asia Pacific (Mumbai)</option>
+                                <option value="ap-east-1">Asia Pacific (Hong Kong)</option>
+                                <option value="me-south-1">Middle East (Bahrain)</option>
+                                <option value="af-south-1">Africa (Cape Town)</option>
+                                <option value="sa-east-1">South America (São Paulo)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Snapshots Overview Metrics -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-camera" style="color: #3498db;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="totalSnapshots">-</div>
+                            <div class="metric-label">Total Snapshots</div>
+                        </div>
+                        <div class="metric-actions">
+                            <button onclick="exportData('snapshots', 'csv')" class="btn-icon" title="Export CSV">
+                                <i class="fas fa-file-csv"></i>
+                            </button>
+                            <button onclick="exportData('snapshots', 'json')" class="btn-icon" title="Export JSON">
+                                <i class="fas fa-file-code"></i>
+                            </button>
+                            <button onclick="exportData('snapshots', 'excel')" class="btn-icon" title="Export Excel">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-hdd" style="color: #27ae60;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="volumesWithSnapshots">-</div>
+                            <div class="metric-label">Volumes with Snapshots</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-exclamation-triangle" style="color: #f39c12;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="volumesWithoutSnapshots">-</div>
+                            <div class="metric-label">Volumes without Snapshots</div>
+                        </div>
+                        <div class="metric-actions">
+                            <button onclick="exportData('volumes-without-snapshots', 'csv')" class="btn-icon" title="Export CSV">
+                                <i class="fas fa-file-csv"></i>
+                            </button>
+                            <button onclick="exportData('volumes-without-snapshots', 'json')" class="btn-icon" title="Export JSON">
+                                <i class="fas fa-file-code"></i>
+                            </button>
+                            <button onclick="exportData('volumes-without-snapshots', 'excel')" class="btn-icon" title="Export Excel">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-database" style="color: #e67e22;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="bigVolumeSnapshots">-</div>
+                            <div class="metric-label">Big Volume Snapshots</div>
+                        </div>
+                        <div class="metric-actions">
+                            <button onclick="exportData('big-volume-snapshots', 'csv')" class="btn-icon" title="Export CSV">
+                                <i class="fas fa-file-csv"></i>
+                            </button>
+                            <button onclick="exportData('big-volume-snapshots', 'json')" class="btn-icon" title="Export JSON">
+                                <i class="fas fa-file-code"></i>
+                            </button>
+                            <button onclick="exportData('big-volume-snapshots', 'excel')" class="btn-icon" title="Export Excel">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Snapshot Age Analysis - Consolidated Widget -->
+                <div class="metrics-grid" style="margin-top: 24px;">
+                    <div class="metric-card" style="grid-column: span 2;">
+                        <div class="metric-icon">
+                            <i class="fas fa-clock" style="color: #e74c3c;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="filteredSnapshotsCount">-</div>
+                            <div class="metric-label">
+                                <span id="filteredSnapshotsLabel">Older Snapshots</span>
+                                <div style="margin-top: 8px;">
+                                    <select id="snapshotAgeFilter" onchange="updateSnapshotAgeFilter()" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; font-size: 12px;">
+                                        <option value="30">Older than 30 days</option>
+                                        <option value="60">Older than 60 days</option>
+                                        <option value="90" selected>Older than 90 days</option>
+                                        <option value="all">All snapshots</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-actions">
+                            <button onclick="exportFilteredSnapshots('csv')" class="btn-icon" title="Export CSV">
+                                <i class="fas fa-file-csv"></i>
+                            </button>
+                            <button onclick="exportFilteredSnapshots('json')" class="btn-icon" title="Export JSON">
+                                <i class="fas fa-file-code"></i>
+                            </button>
+                            <button onclick="exportFilteredSnapshots('excel')" class="btn-icon" title="Export Excel">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AMI Overview Metrics -->
+                <div class="metrics-grid" style="margin-top: 32px;">
+                    <h3 style="grid-column: 1 / -1; margin-bottom: 16px; color: var(--text-primary); font-size: 1.25rem;">
+                        <i class="fas fa-compact-disc" style="margin-right: 8px; color: #FF9900;"></i>
+                        AMI Management
+                    </h3>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-compact-disc" style="color: #FF9900;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="totalAMIs">-</div>
+                            <div class="metric-label">Total AMIs</div>
+                        </div>
+                        <div class="metric-actions">
+                            <button onclick="exportData('amis', 'csv')" class="btn-icon" title="Export CSV">
+                                <i class="fas fa-file-csv"></i>
+                            </button>
+                            <button onclick="exportData('amis', 'json')" class="btn-icon" title="Export JSON">
+                                <i class="fas fa-file-code"></i>
+                            </button>
+                            <button onclick="exportData('amis', 'excel')" class="btn-icon" title="Export Excel">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-user" style="color: #27ae60;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="ownedAMIs">-</div>
+                            <div class="metric-label">Owned AMIs</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-share-alt" style="color: #3498db;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="sharedAMIs">-</div>
+                            <div class="metric-label">Shared AMIs</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-clock" style="color: #e74c3c;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="oldAMIs">-</div>
+                            <div class="metric-label">AMIs > 90 Days</div>
+                        </div>
+                        <div class="metric-actions">
+                            <button onclick="exportData('old-amis', 'csv')" class="btn-icon" title="Export CSV">
+                                <i class="fas fa-file-csv"></i>
+                            </button>
+                            <button onclick="exportData('old-amis', 'json')" class="btn-icon" title="Export JSON">
+                                <i class="fas fa-file-code"></i>
+                            </button>
+                            <button onclick="exportData('old-amis', 'excel')" class="btn-icon" title="Export Excel">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AMI Age Analysis -->
+                <div class="metrics-grid" style="margin-top: 24px;">
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-calendar-alt" style="color: #f39c12;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="amis30Days">-</div>
+                            <div class="metric-label">AMIs > 30 Days</div>
+                        </div>
+                        <div class="metric-indicator" id="amis30DaysIndicator"></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-calendar-check" style="color: #e67e22;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="amis60Days">-</div>
+                            <div class="metric-label">AMIs > 60 Days</div>
+                        </div>
+                        <div class="metric-indicator" id="amis60DaysIndicator"></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-archive" style="color: #95a5a6;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="unusedAMIs">-</div>
+                            <div class="metric-label">Unused AMIs</div>
+                        </div>
+                        <div class="metric-actions">
+                            <button onclick="exportData('unused-amis', 'csv')" class="btn-icon" title="Export CSV">
+                                <i class="fas fa-file-csv"></i>
+                            </button>
+                            <button onclick="exportData('unused-amis', 'json')" class="btn-icon" title="Export JSON">
+                                <i class="fas fa-file-code"></i>
+                            </button>
+                            <button onclick="exportData('unused-amis', 'excel')" class="btn-icon" title="Export Excel">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-chart-line" style="color: #9b59b6;"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="amiStorageCost">-</div>
+                            <div class="metric-label">Estimated Storage Cost</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Snapshots Data Table -->
+                <div class="card" style="margin-top: 24px;" id="snapshotsTableCard">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-hdd" style="margin-right: 8px;"></i>
+                            EBS Snapshots
+                        </div>
+                        <div class="card-actions">
+                            <div class="filter-group">
+                                <label for="ageFilter">Filter by Age:</label>
+                                <select id="ageFilter" onchange="filterSnapshotsByAge()">
+                                    <option value="">All Snapshots</option>
+                                    <option value="30">Older than 30 days</option>
+                                    <option value="60">Older than 60 days</option>
+                                    <option value="90">Older than 90 days</option>
+                                </select>
+                            </div>
+                            <button onclick="exportFilteredSnapshots('csv')" class="btn btn-secondary">
+                                <i class="fas fa-download"></i> Export CSV
+                            </button>
+                            <button onclick="exportFilteredSnapshots('excel')" class="btn btn-secondary">
+                                <i class="fas fa-file-excel"></i> Export Excel
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="data-table" id="snapshotsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Snapshot ID</th>
+                                        <th>Volume ID</th>
+                                        <th>Description</th>
+                                        <th>Size (GB)</th>
+                                        <th>Created Date</th>
+                                        <th>Age (Days)</th>
+                                        <th>State</th>
+                                        <th>Encrypted</th>
+                                        <th>Region</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="snapshotsTableBody">
+                                    <tr>
+                                        <td colspan="9" class="text-center">Select an account to view snapshots</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Volumes Without Snapshots Table -->
+                <div class="card" style="margin-top: 24px;" id="volumesTableCard">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-exclamation-triangle" style="margin-right: 8px; color: var(--warning-color);"></i>
+                            Volumes Without Snapshots
+                        </div>
+                        <div class="card-actions">
+                            <button onclick="exportVolumesWithoutSnapshots('csv')" class="btn btn-secondary">
+                                <i class="fas fa-download"></i> Export CSV
+                            </button>
+                            <button onclick="exportVolumesWithoutSnapshots('excel')" class="btn btn-secondary">
+                                <i class="fas fa-file-excel"></i> Export Excel
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="data-table" id="volumesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Volume ID</th>
+                                        <th>Size (GB)</th>
+                                        <th>Volume Type</th>
+                                        <th>State</th>
+                                        <th>Attached Instance</th>
+                                        <th>Created Date</th>
+                                        <th>Encrypted</th>
+                                        <th>Region</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="volumesTableBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center">Select an account to view volumes</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AMI Data Table -->
+                <div class="card" style="margin-top: 24px;" id="amisTableCard">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-compact-disc" style="margin-right: 8px; color: #FF9900;"></i>
+                            Amazon Machine Images (AMIs)
+                        </div>
+                        <div class="card-actions">
+                            <div class="filter-group">
+                                <label for="amiAgeFilter">Filter by Age:</label>
+                                <select id="amiAgeFilter" onchange="filterAMIsByAge()">
+                                    <option value="">All AMIs</option>
+                                    <option value="30">Older than 30 days</option>
+                                    <option value="60">Older than 60 days</option>
+                                    <option value="90">Older than 90 days</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="amiOwnerFilter">Filter by Owner:</label>
+                                <select id="amiOwnerFilter" onchange="filterAMIsByOwner()">
+                                    <option value="">All AMIs</option>
+                                    <option value="owned">Owned AMIs</option>
+                                    <option value="shared">Shared AMIs</option>
+                                </select>
+                            </div>
+                            <button onclick="exportFilteredAMIs('csv')" class="btn btn-secondary">
+                                <i class="fas fa-download"></i> Export CSV
+                            </button>
+                            <button onclick="exportFilteredAMIs('excel')" class="btn btn-secondary">
+                                <i class="fas fa-file-excel"></i> Export Excel
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table" id="amisTable">
+                                <thead>
+                                    <tr>
+                                        <th>AMI ID</th>
+                                        <th>Name</th>
+                                        <th>Description</th>
+                                        <th>Owner</th>
+                                        <th>State</th>
+                                        <th>Architecture</th>
+                                        <th>Creation Date</th>
+                                        <th>Age (Days)</th>
+                                        <th>Public</th>
+                                        <th>Region</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="amisTableBody">
+                                    <tr>
+                                        <td colspan="10" class="text-center">Select an account to view AMIs</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentAccountId = null;
+        let snapshotsData = [];
+        let volumesWithoutSnapshotsData = [];
+        let filteredSnapshotsData = [];
+        let amisData = [];
+        let filteredAMIsData = [];
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAccounts();
+        });
+        
+        async function loadAccounts() {
+            try {
+                const response = await fetch('/integration/api/accounts');
+                const data = await response.json();
+                
+                const accountSelect = document.getElementById('accountSelect');
+                accountSelect.innerHTML = '<option value="">Select an account...</option>';
+                
+                if (data.success && data.accounts.length > 0) {
+                    data.accounts.forEach(account => {
+                        const option = document.createElement('option');
+                        option.value = account.id;
+                        option.textContent = `${account.displayName} (${account.provider.toUpperCase()})`;
+                        accountSelect.appendChild(option);
+                    });
+                } else {
+                    accountSelect.innerHTML = '<option value="">No accounts found</option>';
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                document.getElementById('accountSelect').innerHTML = '<option value="">Error loading accounts</option>';
+            }
+        }
+        
+        function loadAccountData() {
+            const accountSelect = document.getElementById('accountSelect');
+            currentAccountId = accountSelect.value;
+            
+            if (currentAccountId) {
+                loadSnapshotData();
+                loadSnapshotsTable();
+                loadVolumesWithoutSnapshots();
+                loadAMIData();
+                loadAMIsTable();
+            } else {
+                resetDashboard();
+            }
+        }
+        
+        async function loadSnapshotData() {
+            if (!currentAccountId) return;
+            
+            const region = document.getElementById('regionSelect').value;
+            
+            try {
+                const url = `/snapshots/api/accounts/${currentAccountId}/analysis${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const analysis = data.analysis;
+                    
+                    // Update overview metrics
+                    document.getElementById('totalSnapshots').textContent = analysis.total_snapshots;
+                    document.getElementById('volumesWithSnapshots').textContent = analysis.volumes_with_snapshots_count;
+                    document.getElementById('bigVolumeSnapshots').textContent = analysis.big_volume_snapshots;
+                    
+                    // Update age analysis metrics
+                    document.getElementById('snapshots30Days').textContent = analysis.snapshots_30_days;
+                    document.getElementById('snapshots60Days').textContent = analysis.snapshots_60_days;
+                    document.getElementById('snapshots90Days').textContent = analysis.snapshots_90_days;
+                    document.getElementById('snapshotsTotal').textContent = analysis.total_snapshots;
+                    
+                    // Update indicators
+                    updateIndicators(analysis);
+                } else {
+                    console.error('Error loading snapshot analysis:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading snapshot data:', error);
+            }
+        }
+        
+        async function loadSnapshotsTable() {
+            if (!currentAccountId) return;
+            
+            const region = document.getElementById('regionSelect').value;
+            
+            try {
+                const url = `/snapshots/api/accounts/${currentAccountId}/snapshots${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    snapshotsData = data.snapshots;
+                    filteredSnapshotsData = [...snapshotsData];
+                    currentSnapshotsData = [...snapshotsData]; // Store for filter widget
+                    updateSnapshotsTable(filteredSnapshotsData);
+                    updateSnapshotAgeFilter(); // Update the consolidated filter widget
+                } else {
+                    console.error('Error loading snapshots:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading snapshots:', error);
+            }
+        }
+        
+        async function loadVolumesWithoutSnapshots() {
+            if (!currentAccountId) return;
+            
+            const region = document.getElementById('regionSelect').value;
+            
+            try {
+                const url = `/snapshots/api/accounts/${currentAccountId}/volumes-without-snapshots${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    volumesWithoutSnapshotsData = data.volumes;
+                    document.getElementById('volumesWithoutSnapshots').textContent = data.volumes.length;
+                    updateVolumesTable(data.volumes);
+                } else {
+                    console.error('Error loading volumes without snapshots:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading volumes without snapshots:', error);
+            }
+        }
+        
+        function updateSnapshotsTable(snapshots) {
+            const tbody = document.getElementById('snapshotsTableBody');
+            
+            if (!snapshots || snapshots.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center">No snapshots found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = snapshots.map(snapshot => {
+                const createdDate = new Date(snapshot.startTime).toLocaleDateString();
+                const ageDays = Math.floor((new Date() - new Date(snapshot.startTime)) / (1000 * 60 * 60 * 24));
+                
+                return `
+                    <tr>
+                        <td>${snapshot.snapshotId}</td>
+                        <td>${snapshot.volumeId || 'N/A'}</td>
+                        <td>${snapshot.description || 'No description'}</td>
+                        <td>${snapshot.volumeSize || 'N/A'}</td>
+                        <td>${createdDate}</td>
+                        <td>${ageDays}</td>
+                        <td><span class="status-badge status-${snapshot.state.toLowerCase()}">${snapshot.state}</span></td>
+                        <td>${snapshot.encrypted ? 'Yes' : 'No'}</td>
+                        <td>${snapshot.region}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function updateVolumesTable(volumes) {
+            const tbody = document.getElementById('volumesTableBody');
+            
+            if (!volumes || volumes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">No volumes without snapshots found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = volumes.map(volume => {
+                const createdDate = volume.createTime ? new Date(volume.createTime).toLocaleDateString() : 'N/A';
+                const attachedInstance = volume.attachments && volume.attachments.length > 0 ? 
+                    volume.attachments[0].instanceId : 'Not attached';
+                
+                return `
+                    <tr>
+                        <td>${volume.volumeId}</td>
+                        <td>${volume.size}</td>
+                        <td>${volume.volumeType}</td>
+                        <td><span class="status-badge status-${volume.state.toLowerCase()}">${volume.state}</span></td>
+                        <td>${attachedInstance}</td>
+                        <td>${createdDate}</td>
+                        <td>${volume.encrypted ? 'Yes' : 'No'}</td>
+                        <td>${volume.region}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function updateIndicators(analysis) {
+            const total = analysis.total_snapshots;
+            
+            updateIndicator('snapshots30DaysIndicator', analysis.snapshots_30_days, total);
+            updateIndicator('snapshots60DaysIndicator', analysis.snapshots_60_days, total);
+            updateIndicator('snapshots90DaysIndicator', analysis.snapshots_90_days, total);
+            updateIndicator('snapshotsTotalIndicator', total, total, true);
+        }
+        
+        function updateIndicator(elementId, value, total, isTotal = false) {
+            const indicator = document.getElementById(elementId);
+            if (!indicator) return;
+            
+            if (isTotal) {
+                indicator.className = 'metric-indicator info';
+                return;
+            }
+            
+            const percentage = total > 0 ? (value / total) * 100 : 0;
+            
+            if (percentage >= 50) {
+                indicator.className = 'metric-indicator danger';
+            } else if (percentage >= 25) {
+                indicator.className = 'metric-indicator warning';
+            } else {
+                indicator.className = 'metric-indicator success';
+            }
+        }
+        
+        function filterSnapshotsByAge() {
+            const ageFilter = document.getElementById('ageFilter').value;
+            
+            if (!ageFilter) {
+                filteredSnapshotsData = [...snapshotsData];
+            } else {
+                const ageThreshold = parseInt(ageFilter);
+                const now = new Date();
+                
+                filteredSnapshotsData = snapshotsData.filter(snapshot => {
+                    const ageDays = Math.floor((now - new Date(snapshot.startTime)) / (1000 * 60 * 60 * 24));
+                    return ageDays >= ageThreshold;
+                });
+            }
+            
+            updateSnapshotsTable(filteredSnapshotsData);
+        }
+        
+        async function loadAMIData() {
+            if (!currentAccountId) return;
+            
+            const region = document.getElementById('regionSelect').value;
+            
+            try {
+                const url = `/snapshots/api/accounts/${currentAccountId}/amis${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const analysis = data.analysis;
+                    
+                    // Update AMI metrics
+                    document.getElementById('totalAMIs').textContent = analysis.total_amis;
+                    document.getElementById('ownedAMIs').textContent = analysis.owned_amis;
+                    document.getElementById('sharedAMIs').textContent = analysis.shared_amis;
+                    document.getElementById('oldAMIs').textContent = analysis.amis_90_days;
+                    document.getElementById('amis30Days').textContent = analysis.amis_30_days;
+                    document.getElementById('amis60Days').textContent = analysis.amis_60_days;
+                    document.getElementById('unusedAMIs').textContent = analysis.unused_amis;
+                    document.getElementById('amiStorageCost').textContent = `$${analysis.estimated_storage_cost}`;
+                } else {
+                    console.error('Error loading AMI analysis:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading AMI data:', error);
+            }
+        }
+        
+        async function loadAMIsTable() {
+            if (!currentAccountId) return;
+            
+            const region = document.getElementById('regionSelect').value;
+            
+            try {
+                const url = `/snapshots/api/accounts/${currentAccountId}/amis/list${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    amisData = data.amis;
+                    filteredAMIsData = [...amisData];
+                    updateAMIsTable(filteredAMIsData);
+                } else {
+                    console.error('Error loading AMIs:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading AMIs table:', error);
+            }
+        }
+        
+        function updateAMIsTable(amis) {
+            const tbody = document.getElementById('amisTableBody');
+            
+            if (!amis || amis.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center">No AMIs found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = amis.map(ami => {
+                const createdDate = ami.creationDate ? new Date(ami.creationDate).toLocaleDateString() : 'N/A';
+                const ageDays = ami.creationDate ? Math.floor((new Date() - new Date(ami.creationDate)) / (1000 * 60 * 60 * 24)) : 0;
+                
+                return `
+                    <tr>
+                        <td>${ami.imageId}</td>
+                        <td>${ami.name || 'N/A'}</td>
+                        <td>${ami.description || 'No description'}</td>
+                        <td>${ami.ownerId}</td>
+                        <td><span class="status-badge status-${ami.state.toLowerCase()}">${ami.state}</span></td>
+                        <td>${ami.architecture}</td>
+                        <td>${createdDate}</td>
+                        <td>${ageDays}</td>
+                        <td>${ami.public ? 'Yes' : 'No'}</td>
+                        <td>${ami.region}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function filterAMIsByAge() {
+            const ageFilter = document.getElementById('amiAgeFilter').value;
+            
+            if (!ageFilter) {
+                filteredAMIsData = [...amisData];
+            } else {
+                const ageThreshold = parseInt(ageFilter);
+                const now = new Date();
+                
+                filteredAMIsData = amisData.filter(ami => {
+                    const ageDays = Math.floor((now - new Date(ami.creationDate)) / (1000 * 60 * 60 * 24));
+                    return ageDays >= ageThreshold;
+                });
+            }
+            
+            updateAMIsTable(filteredAMIsData);
+        }
+        
+        function filterAMIsByOwner() {
+            const ownerFilter = document.getElementById('amiOwnerFilter').value;
+            
+            if (!ownerFilter) {
+                filteredAMIsData = [...amisData];
+            } else if (ownerFilter === 'owned') {
+                filteredAMIsData = amisData.filter(ami => ami.ownerId === currentAccountId);
+            } else if (ownerFilter === 'shared') {
+                filteredAMIsData = amisData.filter(ami => ami.ownerId !== currentAccountId);
+            }
+            
+            updateAMIsTable(filteredAMIsData);
+        }
+        
+        function exportFilteredAMIs(format) {
+            if (!filteredAMIsData || filteredAMIsData.length === 0) {
+                alert('No AMI data to export');
+                return;
+            }
+            
+            const filename = `amis_${new Date().toISOString().split('T')[0]}`;
+            
+            if (format === 'csv') {
+                exportToCSV(filteredAMIsData, filename, [
+                    'imageId', 'name', 'description', 'ownerId', 'state', 
+                    'architecture', 'creationDate', 'public', 'region'
+                ]);
+            } else if (format === 'excel') {
+                exportToExcel(filteredAMIsData, filename, 'AMIs');
+            }
+        }
+        
+        // Global variable to store current snapshots data for filtering
+        let currentSnapshotsData = [];
+        
+        function updateSnapshotAgeFilter() {
+            const filterValue = document.getElementById('snapshotAgeFilter').value;
+            const countElement = document.getElementById('filteredSnapshotsCount');
+            const labelElement = document.getElementById('filteredSnapshotsLabel');
+            
+            if (!currentSnapshotsData || currentSnapshotsData.length === 0) {
+                countElement.textContent = '0';
+                return;
+            }
+            
+            let filteredCount = 0;
+            let labelText = 'Older Snapshots';
+            
+            if (filterValue === 'all') {
+                filteredCount = currentSnapshotsData.length;
+                labelText = 'All Snapshots';
+            } else {
+                const ageDays = parseInt(filterValue);
+                const now = new Date();
+                
+                filteredCount = currentSnapshotsData.filter(snapshot => {
+                    const snapshotAge = Math.floor((now - new Date(snapshot.startTime)) / (1000 * 60 * 60 * 24));
+                    return snapshotAge > ageDays;
+                }).length;
+                
+                labelText = `Snapshots > ${ageDays} Days`;
+            }
+            
+            countElement.textContent = filteredCount;
+            labelElement.textContent = labelText;
+        }
+        
+        function exportFilteredSnapshots(format) {
+            const filterValue = document.getElementById('snapshotAgeFilter').value;
+            let dataToExport = [];
+            
+            if (filterValue === 'all') {
+                dataToExport = currentSnapshotsData;
+            } else {
+                const ageDays = parseInt(filterValue);
+                const now = new Date();
+                
+                dataToExport = currentSnapshotsData.filter(snapshot => {
+                    const snapshotAge = Math.floor((now - new Date(snapshot.startTime)) / (1000 * 60 * 60 * 24));
+                    return snapshotAge > ageDays;
+                });
+            }
+            
+            if (!dataToExport || dataToExport.length === 0) {
+                alert('No snapshot data to export');
+                return;
+            }
+            
+            const filename = `filtered_snapshots_${new Date().toISOString().split('T')[0]}`;
+            
+            if (format === 'csv') {
+                exportToCSV(dataToExport, filename, [
+                    'snapshotId', 'volumeId', 'state', 'startTime', 'volumeSize', 'encrypted', 'region'
+                ]);
+            } else if (format === 'json') {
+                exportToJSON(dataToExport, filename);
+            } else if (format === 'excel') {
+                exportToExcel(dataToExport, filename, 'Snapshots');
+            }
+        }
+        
+        function resetDashboard() {
+            document.getElementById('totalSnapshots').textContent = '-';
+            document.getElementById('volumesWithSnapshots').textContent = '-';
+            document.getElementById('volumesWithoutSnapshots').textContent = '-';
+            document.getElementById('bigVolumeSnapshots').textContent = '-';
+            
+            // Reset AMI metrics
+            document.getElementById('totalAMIs').textContent = '-';
+            document.getElementById('ownedAMIs').textContent = '-';
+            document.getElementById('sharedAMIs').textContent = '-';
+            document.getElementById('oldAMIs').textContent = '-';
+            document.getElementById('amis30Days').textContent = '-';
+            document.getElementById('amis60Days').textContent = '-';
+            document.getElementById('unusedAMIs').textContent = '-';
+            document.getElementById('amiStorageCost').textContent = '-';
+            
+            document.getElementById('snapshots30Days').textContent = '-';
+            document.getElementById('filteredSnapshotsCount').textContent = '-';
+            document.getElementById('snapshots60Days').textContent = '-';
+            document.getElementById('snapshots90Days').textContent = '-';
+            document.getElementById('snapshotsTotal').textContent = '-';
+            
+            document.getElementById('snapshotsTableBody').innerHTML = '<tr><td colspan="9" class="text-center">Select an account to view snapshots</td></tr>';
+            document.getElementById('volumesTableBody').innerHTML = '<tr><td colspan="8" class="text-center">Select an account to view volumes</td></tr>';
+            document.getElementById('amisTableBody').innerHTML = '<tr><td colspan="10" class="text-center">Select an account to view AMIs</td></tr>';
+            
+            document.getElementById('ageFilter').value = '';
+            document.getElementById('amiAgeFilter').value = '';
+            document.getElementById('amiOwnerFilter').value = '';
+        }
+        
+        function onRegionChange() {
+            if (currentAccountId) {
+                loadSnapshotData();
+                loadSnapshotsTable();
+                loadVolumesWithoutSnapshots();
+                loadAMIData();
+                loadAMIsTable();
+            }
+        }
+        
+        function refreshAllData() {
+            if (currentAccountId) {
+                loadSnapshotData();
+                loadSnapshotsTable();
+                loadVolumesWithoutSnapshots();
+                loadAMIData();
+                loadAMIsTable();
+            }
+        }
+        
+        async function fetchBigVolumeSnapshotsForExport(format) {
+            if (!currentAccountId) return;
+            
+            const region = document.getElementById('regionSelect').value;
+            
+            try {
+                const url = `/snapshots/api/accounts/${currentAccountId}/big-volume-snapshots${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const filename = `big_volume_snapshots_${currentAccountId}`;
+                    exportToFormat(data.snapshots, filename, format);
+                } else {
+                    console.error('Error loading big volume snapshots:', data.error);
+                    alert('Error loading big volume snapshots data');
+                }
+            } catch (error) {
+                console.error('Error fetching big volume snapshots:', error);
+                alert('Error fetching big volume snapshots data');
+            }
+        }
+        
+        // Export functions
+        function exportData(dataType, format) {
+            if (!currentAccountId) {
+                alert('Please select an account first');
+                return;
+            }
+            
+            let data, filename;
+            
+            switch (dataType) {
+                case 'snapshots':
+                    data = snapshotsData;
+                    filename = `snapshots_${currentAccountId}`;
+                    break;
+                case 'volumes-without-snapshots':
+                    data = volumesWithoutSnapshotsData;
+                    filename = `volumes_without_snapshots_${currentAccountId}`;
+                    break;
+                case 'big-volume-snapshots':
+                    // Fetch big volume snapshots data
+                    fetchBigVolumeSnapshotsForExport(format);
+                    return;
+                case 'old-snapshots':
+                    const now = new Date();
+                    data = snapshotsData.filter(snapshot => {
+                        const ageDays = Math.floor((now - new Date(snapshot.startTime)) / (1000 * 60 * 60 * 24));
+                        return ageDays >= 90;
+                    });
+                    filename = `old_snapshots_${currentAccountId}`;
+                    break;
+                default:
+                    return;
+            }
+            
+            exportToFormat(data, filename, format);
+        }
+        
+        function exportFilteredSnapshots(format) {
+            if (!currentAccountId) {
+                alert('Please select an account first');
+                return;
+            }
+            
+            const ageFilter = document.getElementById('ageFilter').value;
+            const suffix = ageFilter ? `_older_than_${ageFilter}_days` : '';
+            const filename = `snapshots_${currentAccountId}${suffix}`;
+            
+            exportToFormat(filteredSnapshotsData, filename, format);
+        }
+        
+        function exportVolumesWithoutSnapshots(format) {
+            if (!currentAccountId) {
+                alert('Please select an account first');
+                return;
+            }
+            
+            const filename = `volumes_without_snapshots_${currentAccountId}`;
+            exportToFormat(volumesWithoutSnapshotsData, filename, format);
+        }
+        
+        function exportToFormat(data, filename, format) {
+            if (!data || data.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            const timestamp = new Date().toISOString().split('T')[0];
+            const fullFilename = `${filename}_${timestamp}`;
+            
+            switch (format) {
+                case 'csv':
+                    exportToCSV(data, fullFilename);
+                    break;
+                case 'json':
+                    exportToJSON(data, fullFilename);
+                    break;
+                case 'excel':
+                    exportToExcel(data, fullFilename);
+                    break;
+            }
+        }
+        
+        function exportToCSV(data, filename) {
+            const headers = Object.keys(data[0]);
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => headers.map(header => {
+                    const value = row[header];
+                    return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+                }).join(','))
+            ].join('\n');
+            
+            downloadFile(csvContent, `${filename}.csv`, 'text/csv');
+        }
+        
+        function exportToJSON(data, filename) {
+            const jsonContent = JSON.stringify(data, null, 2);
+            downloadFile(jsonContent, `${filename}.json`, 'application/json');
+        }
+        
+        function exportToExcel(data, filename) {
+            const headers = Object.keys(data[0]);
+            const excelContent = `
+                <table>
+                    <thead>
+                        <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${data.map(row => `<tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>`).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            downloadFile(excelContent, `${filename}.xls`, 'application/vnd.ms-excel');
+        }
+        
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

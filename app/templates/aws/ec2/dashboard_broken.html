@@ -1,0 +1,410 @@
+{% extends "layouts/dashboard_layout.html" %}
+
+<!-- Import component macros -->
+{% from 'components/metrics_card.html' import metrics_card %}
+{% from 'components/data_table.html' import data_table %}
+{% from 'components/export_dropdown.html' import export_dropdown %}
+{% from 'components/loading_spinner.html' import loading_spinner %}
+{% from 'components/alert.html' import alert %}
+{% from 'components/modal.html' import modal %}
+
+{% block title %}EC2 Dashboard{% endblock %}
+
+{% block header_icon %}<i class="fas fa-server" style="margin-right: 12px; color: var(--primary-blue);"></i>{% endblock %}
+{% block header_title %}EC2 Dashboard{% endblock %}
+
+{% block header_actions %}
+<button onclick="refreshAllData()" class="btn btn-primary">
+    <i class="fas fa-sync-alt"></i>
+    Refresh All Data
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Account & Region Selector -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-body">
+        <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label for="accountSelect" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">AWS Account:</label>
+                <select id="accountSelect" onchange="loadAccountData()" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 14px; background: var(--bg-primary);">
+                    <option value="">Loading accounts...</option>
+                </select>
+            </div>
+            
+            <div style="flex: 1; min-width: 200px;">
+                <label for="regionSelect" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Region:</label>
+                <select id="regionSelect" onchange="loadInstanceData()" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 14px; background: var(--bg-primary);">
+                    <option value="">All Regions</option>
+                    <option value="us-east-1">US East (N. Virginia)</option>
+                    <option value="us-east-2">US East (Ohio)</option>
+                    <option value="us-west-1">US West (N. California)</option>
+                    <option value="us-west-2">US West (Oregon)</option>
+                    <option value="eu-west-1">Europe (Ireland)</option>
+                    <option value="eu-west-2">Europe (London)</option>
+                    <option value="eu-central-1">Europe (Frankfurt)</option>
+                    <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                    <option value="ap-southeast-2">Asia Pacific (Sydney)</option>
+                    <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
+                    <option value="ap-south-1">Asia Pacific (Mumbai)</option>
+                    <option value="ca-central-1">Canada (Central)</option>
+                    <option value="sa-east-1">South America (São Paulo)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Metrics Overview using new component -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+    <div id="totalInstancesCard">
+        {{ metrics_card("Total Instances", "-", "fas fa-server", "primary") }}
+    </div>
+    <div id="runningInstancesCard">
+        {{ metrics_card("Running", "-", "fas fa-play-circle", "success") }}
+    </div>
+    <div id="stoppedInstancesCard">
+        {{ metrics_card("Stopped", "-", "fas fa-stop-circle", "warning") }}
+    </div>
+    <div id="recommendationsCard">
+        {{ metrics_card("Optimization Opportunities", "-", "fas fa-lightbulb", "info") }}
+    </div>
+</div>
+
+<!-- Stopped Instances Duration Analysis -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">
+                <i class="fas fa-clock" style="margin-right: 8px; color: var(--warning-yellow);"></i>
+                Stopped Instances Duration Analysis
+            </h3>
+            <p class="card-subtitle">Instances stopped for extended periods</p>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <div>
+                <label for="durationFilter" style="margin-right: 8px; font-weight: 600;">Filter:</label>
+                <select id="durationFilter" onchange="filterStoppedInstances()" style="padding: 8px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 14px;">
+                    <option value="all">All Stopped</option>
+                    <option value="7">Stopped > 7 Days</option>
+                    <option value="30">Stopped > 30 Days</option>
+                    <option value="60">Stopped > 60 Days</option>
+                    <option value="90">Stopped > 90 Days</option>
+                </select>
+            </div>
+            {{ export_dropdown("stoppedExportDropdown", "exportStoppedData", "Export Stopped") }}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="metrics-grid">
+            <div id="stopped30DaysCard">
+                {{ metrics_card("Stopped > 30 Days", "-", "fas fa-clock", "warning", "Potential cost savings") }}
+            </div>
+            <div id="stopped60DaysCard">
+                {{ metrics_card("Stopped > 60 Days", "-", "fas fa-exclamation-triangle", "danger", "Consider termination") }}
+            </div>
+            <div id="stopped90DaysCard">
+                {{ metrics_card("Stopped > 90 Days", "-", "fas fa-ban", "danger", "High priority cleanup") }}
+            </div>
+        </div>
+        
+        <!-- Filtered Stopped Instances Table -->
+        <div id="stoppedInstancesTable" style="margin-top: 20px; display: none;">
+            <h4 style="margin-bottom: 16px; color: var(--text-primary);">Filtered Stopped Instances</h4>
+            <div id="stoppedInstancesContent"></div>
+        </div>
+    </div>
+</div>
+
+<!-- EC2 Instances -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">
+                <i class="fas fa-server" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                EC2 Instances
+            </h3>
+            <p class="card-subtitle">Manage and monitor your EC2 instances</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="syncInstanceData()" class="btn btn-secondary" id="syncBtn">
+                <i class="fas fa-sync-alt"></i>
+                Sync Data
+            </button>
+            {{ export_dropdown("exportDropdown", "exportData", "Export") }}
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="instancesContent">
+            {{ loading_spinner("medium", "Select an account to view EC2 instances") }}
+        </div>
+    </div>
+</div>
+
+<!-- Optimization Recommendations -->
+<div class="card" style="margin-top: 24px;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-lightbulb" style="margin-right: 8px; color: var(--warning-yellow);"></i>
+            Optimization Recommendations
+        </h3>
+        <p class="card-subtitle">Cost optimization opportunities for your EC2 instances</p>
+    </div>
+    <div class="card-body">
+        <div id="recommendationsContent">
+            {{ loading_spinner("medium", "Select an account to view recommendations") }}
+        </div>
+    </div>
+</div>
+
+<!-- Instance Details Modal using new component -->
+{% call modal("instanceModal", "Instance Details", "large") %}
+<div id="instanceDetailsContent">
+    <!-- Dynamic content will be loaded here -->
+</div>
+{% endcall %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentAccountId = null;
+let instancesData = [];
+let recommendationsData = [];
+let stoppedInstancesData = [];
+
+// Load accounts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadAccounts();
+});
+
+async function loadAccounts() {
+    try {
+        const response = await fetch('/integration/api/accounts');
+        const data = await response.json();
+        
+        const accountSelect = document.getElementById('accountSelect');
+        accountSelect.innerHTML = '<option value="">Select an account...</option>';
+        
+        if (data.success && data.accounts.length > 0) {
+            data.accounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.id;
+                option.textContent = `${account.displayName} (${account.provider.toUpperCase()})`;
+                accountSelect.appendChild(option);
+            });
+        } else {
+            accountSelect.innerHTML = '<option value="">No accounts found</option>';
+        }
+    } catch (error) {
+        console.error('Error loading accounts:', error);
+        document.getElementById('accountSelect').innerHTML = '<option value="">Error loading accounts</option>';
+    }
+}
+
+function loadAccountData() {
+    const accountSelect = document.getElementById('accountSelect');
+    currentAccountId = accountSelect.value;
+    
+    if (currentAccountId) {
+        loadInstanceData();
+        loadRecommendations();
+        loadStoppedDurationData();
+    } else {
+        resetDashboard();
+    }
+}
+
+async function loadInstanceData() {
+    if (!currentAccountId) return;
+    
+    const region = document.getElementById('regionSelect').value;
+    const instancesContent = document.getElementById('instancesContent');
+    instancesContent.innerHTML = '{{ loading_spinner("medium", "Loading EC2 instances...") }}';
+    
+    try {
+        const url = `/ec2/api/accounts/${currentAccountId}/instances${region ? `?region=${region}` : ''}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+            instancesData = data.instances;
+            displayInstances(instancesData);
+            updateMetrics();
+            loadStoppedDurationData();
+        } else {
+            instancesContent.innerHTML = `{{ alert("danger", "Error", "${data.error}") }}`;
+        }
+    } catch (error) {
+        console.error('Error loading instances:', error);
+        instancesContent.innerHTML = '{{ alert("danger", "Error", "Failed to load instances") }}';
+    }
+}
+
+function displayInstances(instances) {
+    const instancesContent = document.getElementById('instancesContent');
+    
+    if (instances.length === 0) {
+        instancesContent.innerHTML = '{{ loading_spinner("medium", "No EC2 instances found") }}';
+        return;
+    }
+    
+    // Prepare data for the new data table component
+    const headers = [
+        {field: 'name', label: 'Name'},
+        {field: 'instanceId', label: 'Instance ID'},
+        {field: 'instanceType', label: 'Type'},
+        {field: 'state', label: 'State', type: 'badge'},
+        {field: 'region', label: 'Region'},
+        {field: 'launchTime', label: 'Launch Time', type: 'date'}
+    ];
+    
+    const actions = [
+        {function: 'viewUtilization', icon: 'fas fa-chart-line', label: 'Utilization', class: 'primary'},
+        {function: 'openInstanceDetails', icon: 'fas fa-eye', label: 'Details', class: 'secondary'}
+    ];
+    
+    // Transform instances data for table
+    const tableData = instances.map(instance => ({
+        id: instance.instanceId,
+        name: instance.tags && instance.tags.Name ? instance.tags.Name : 'Unnamed',
+        instanceId: instance.instanceId,
+        instanceType: instance.instanceType,
+        state: instance.state,
+        state_class: instance.state === 'running' ? 'success' : instance.state === 'stopped' ? 'warning' : 'secondary',
+        region: instance.region,
+        launchTime: instance.launchTime
+    }));
+    
+    // Use the data table component (would need to be rendered server-side in real implementation)
+    let tableHTML = `
+        <div class="nav-section">
+            <div class="nav-section-title">Main</div>
+            <div class="nav-item">
+                <a href="/" class="nav-link">
+                    <div class="icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">Account Setup</div>
+            <div class="nav-item">
+                <a href="/integration/accounts" class="nav-link">
+                    <div class="icon"><i class="fas fa-link"></i></div>
+                    <span>Connected Accounts</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/integration/wizard" class="nav-link">
+                    <div class="icon"><i class="fas fa-plus"></i></div>
+                    <span>Add Account</span>
+                </a>
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        ${headers.map(h => `<th>${h.label}</th>`).join('')}
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableData.map(row => `
+                        <tr onclick="openInstanceDetails('${row.id}')" style="cursor: pointer;">
+                            <td><strong>${row.name}</strong></td>
+                            <td>${row.instanceId}</td>
+                            <td>${row.instanceType}</td>
+                            <td><span class="badge badge-${row.state_class}">${row.state}</span></td>
+                            <td>${row.region}</td>
+                            <td>${formatDate(row.launchTime)}</td>
+                            <td onclick="event.stopPropagation();">
+                                <button class="btn btn-sm btn-primary" onclick="viewUtilization('${row.id}')">
+                                    <i class="fas fa-chart-line"></i> Utilization
+                                </button>
+                                <button class="btn btn-sm btn-secondary" onclick="openInstanceDetails('${row.id}')">
+                                    <i class="fas fa-eye"></i> Details
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    instancesContent.innerHTML = tableHTML;
+}
+
+function updateMetrics() {
+    const totalInstances = instancesData.length;
+    const runningInstances = instancesData.filter(i => i.state === 'running').length;
+    const stoppedInstances = instancesData.filter(i => i.state === 'stopped').length;
+    const totalRecommendations = recommendationsData.length;
+    
+    // Update metric cards (would need dynamic update in real implementation)
+    document.querySelector('#totalInstancesCard .metric-value').textContent = totalInstances;
+    document.querySelector('#runningInstancesCard .metric-value').textContent = runningInstances;
+    document.querySelector('#stoppedInstancesCard .metric-value').textContent = stoppedInstances;
+    document.querySelector('#recommendationsCard .metric-value').textContent = totalRecommendations;
+}
+
+function openInstanceDetails(instanceId) {
+    const instance = instancesData.find(i => i.instanceId === instanceId);
+    if (!instance) return;
+    
+    const instanceName = instance.tags && instance.tags.Name ? instance.tags.Name : 'Unnamed';
+    
+    // Update modal content
+    document.getElementById('instanceDetailsContent').innerHTML = `
+        <div class="instance-details-grid">
+            <div class="detail-section">
+                <h3>Basic Information</h3>
+                <div class="detail-item"><strong>Name:</strong> ${instanceName}</div>
+                <div class="detail-item"><strong>Instance ID:</strong> ${instance.instanceId}</div>
+                <div class="detail-item"><strong>Type:</strong> ${instance.instanceType}</div>
+                <div class="detail-item"><strong>State:</strong> <span class="badge badge-${instance.state === 'running' ? 'success' : 'warning'}">${instance.state}</span></div>
+                <div class="detail-item"><strong>Platform:</strong> ${instance.platform}</div>
+                <div class="detail-item"><strong>Architecture:</strong> ${instance.architecture || 'N/A'}</div>
+            </div>
+            
+            <div class="detail-section">
+                <h3>Network & Location</h3>
+                <div class="detail-item"><strong>Region:</strong> ${instance.region}</div>
+                <div class="detail-item"><strong>Availability Zone:</strong> ${instance.availabilityZone}</div>
+                <div class="detail-item"><strong>VPC ID:</strong> ${instance.vpcId || 'N/A'}</div>
+                <div class="detail-item"><strong>Subnet ID:</strong> ${instance.subnetId || 'N/A'}</div>
+                <div class="detail-item"><strong>Private IP:</strong> ${instance.privateIpAddress || 'N/A'}</div>
+                <div class="detail-item"><strong>Public IP:</strong> ${instance.publicIpAddress || 'N/A'}</div>
+            </div>
+            
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="viewUtilization('${instance.instanceId}')">
+                    <i class="fas fa-chart-line"></i> View Utilization
+                </button>
+                <button class="btn btn-secondary" onclick="syncSingleInstance('${instance.instanceId}')">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+            </div>
+        </div>
+    `;
+    
+    showModal('instanceModal');
+}
+
+// Override the global refresh function
+function refreshAllData() {
+    if (currentAccountId) {
+        loadInstanceData();
+        loadRecommendations();
+        loadStoppedDurationData();
+    }
+}
+
+// Additional functions would continue here...
+// (syncInstanceData, viewUtilization, loadRecommendations, etc.)
+
+</script>
+{% endblock %}

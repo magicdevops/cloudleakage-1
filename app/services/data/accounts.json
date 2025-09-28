@@ -1,0 +1,43 @@
+[
+  {
+    "id": "cc383050-7b01-4eb3-bcd9-b0f34158d135",
+    "displayName": "Prod-211125677149",
+    "provider": "aws",
+    "accessType": "accesskey",
+    "roleArn": null,
+    "accountInfo": {
+      "accountId": "211125677149",
+      "userId": "AIDATCKASFROSHSFF6H5O",
+      "arn": "arn:aws:iam::211125677149:user/cloudLeakage",
+      "costAccess": false
+    },
+    "status": "connected",
+    "createdAt": "2025-09-17 06:53:32.349637",
+    "lastSync": null,
+    "billingEnabled": false,
+    "accountType": "linked",
+    "exportName": "",
+    "startDate": "Jul-2025"
+  },
+  {
+    "id": "cab197ee-66c4-48f3-ae0a-2a3cb9d7c889",
+    "displayName": "Production AWS Account",
+    "provider": "aws",
+    "accessType": "accesskey",
+    "roleArn": null,
+    "accountInfo": {
+      "accountId": "211125677149",
+      "userId": "AIDATCKASFROSHSFF6H5O",
+      "arn": "arn:aws:iam::211125677149:user/cloudLeakage",
+      "costAccess": false
+    },
+    "status": "connected",
+    "createdAt": "2025-09-17 06:51:46.136234",
+    "lastSync": null,
+    "billingEnabled": true,
+    "accountType": "organization",
+    "exportName": null,
+    "startDate": null,
+    "last_sync": "2025-09-17T06:57:55.404651"
+  }
+]

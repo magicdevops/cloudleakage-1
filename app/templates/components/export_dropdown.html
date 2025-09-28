@@ -1,0 +1,42 @@
+<!-- Reusable Export Dropdown Component -->
+{% macro export_dropdown(dropdown_id, export_function, button_text="Export", button_class="btn btn-success") %}
+<div class="dropdown" style="position: relative;">
+    <button onclick="toggleDropdown('{{ dropdown_id }}')" class="{{ button_class }}">
+        <i class="fas fa-download"></i>
+        {{ button_text }}
+    </button>
+    <div id="{{ dropdown_id }}" class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 1000; min-width: 150px;">
+        <button onclick="{{ export_function }}('csv')" class="dropdown-item">
+            <i class="fas fa-file-csv"></i>
+            Export CSV
+        </button>
+        <button onclick="{{ export_function }}('json')" class="dropdown-item">
+            <i class="fas fa-file-code"></i>
+            Export JSON
+        </button>
+        <button onclick="{{ export_function }}('excel')" class="dropdown-item">
+            <i class="fas fa-file-excel"></i>
+            Export Excel
+        </button>
+    </div>
+</div>
+
+<script>
+function toggleDropdown(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function closeDropdown(e) {
+        if (!e.target.closest(`#${dropdownId}`) && !e.target.closest(`[onclick="toggleDropdown('${dropdownId}')"]`)) {
+            dropdown.style.display = 'none';
+            document.removeEventListener('click', closeDropdown);
+        }
+    });
+}
+</script>
+{% endmacro %}
+
+<!-- Usage Example:
+{{ export_dropdown("mainExportDropdown", "exportData", "Export Data") }}
+-->

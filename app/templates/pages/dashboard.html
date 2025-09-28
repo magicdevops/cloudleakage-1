@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudSpend - AWS Cost Optimization</title>
+    <link href="{{ url_for('static', filename='css/cloudspend-style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Include Shared Sidebar Component -->
+        {% include 'components/sidebar.html' %}
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area">
+                <!-- Header -->
+                <div class="header">
+                    <div>
+                        <h1 class="header-title">Cost Dashboard</h1>
+                        <p class="text-muted">Monitor and optimize your AWS spending</p>
+                    </div>
+                    <div class="header-actions">
+                        <!-- Account and Region Selectors -->
+                        <div style="display: flex; gap: 16px; align-items: center; background: white; padding: 12px 16px; border-radius: 8px; border: 1px solid #e1e5e9; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <div>
+                                <label for="accountSelect" style="display: block; margin-bottom: 4px; font-weight: 600; color: #666; font-size: 12px;">AWS Account:</label>
+                                <select id="accountSelect" onchange="loadDashboardData()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 180px;">
+                                    <option value="">Loading accounts...</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="regionSelect" style="display: block; margin-bottom: 4px; font-weight: 600; color: #666; font-size: 12px;">Region:</label>
+                                <select id="regionSelect" onchange="loadDashboardData()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 150px;">
+                                    <option value="">All Regions</option>
+                                    <option value="us-east-1">US East (N. Virginia)</option>
+                                    <option value="us-east-2">US East (Ohio)</option>
+                                    <option value="us-west-1">US West (N. California)</option>
+                                    <option value="us-west-2">US West (Oregon)</option>
+                                    <option value="eu-west-1">Europe (Ireland)</option>
+                                    <option value="eu-west-2">Europe (London)</option>
+                                    <option value="eu-central-1">Europe (Frankfurt)</option>
+                                    <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                                    <option value="ap-southeast-2">Asia Pacific (Sydney)</option>
+                                    <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
+                                    <option value="ap-south-1">Asia Pacific (Mumbai)</option>
+                                    <option value="ca-central-1">Canada (Central)</option>
+                                    <option value="sa-east-1">South America (São Paulo)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <a href="/integration/wizard" class="btn btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Integrate Account
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card clickable {% if data.cost_change < 0 %}positive{% elif data.cost_change > 0 %}negative{% else %}neutral{% endif %}" onclick="window.location.href='/reports'">
+                        <div class="metric-header">
+                            <div class="metric-title">Current Month Cost</div>
+                            <div class="metric-icon">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value">${{ "%.2f"|format(data.current_month_cost or 0) }}</div>
+                        <div class="metric-change {% if data.cost_change < 0 %}positive{% elif data.cost_change > 0 %}negative{% else %}neutral{% endif %}">
+                            <i class="fas fa-{% if data.cost_change < 0 %}arrow-down{% elif data.cost_change > 0 %}arrow-up{% else %}minus{% endif %}"></i>
+                            {{ "%.1f"|format(data.cost_change or 0) }}% from last month
+                        </div>
+                    </div>
+
+                    <div class="metric-card clickable" onclick="window.location.href='/ec2'">
+                        <div class="metric-header">
+                            <div class="metric-title">Total Resources</div>
+                            <div class="metric-icon">
+                                <i class="fas fa-server"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value">{{ data.total_resources or 0 }}</div>
+                        <div class="metric-change neutral">
+                            <i class="fas fa-info-circle"></i>
+                            Across all services
+                        </div>
+                    </div>
+
+                    <div class="metric-card clickable" onclick="window.location.href='/cloudwatch'">
+                        <div class="metric-header">
+                            <div class="metric-title">Total Alarms</div>
+                            <div class="metric-icon">
+                                <i class="fas fa-bell"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value" id="totalAlarms">-</div>
+                        <div class="metric-change neutral">
+                            <i class="fas fa-chart-line"></i>
+                            CloudWatch monitoring
+                        </div>
+                    </div>
+
+                    <div class="metric-card clickable" onclick="scrollToRecommendations()">
+                        <div class="metric-header">
+                            <div class="metric-title">Recommendations</div>
+                            <div class="metric-icon">
+                                <i class="fas fa-lightbulb"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value">{{ data.recommendations_count or 0 }}</div>
+                        <div class="metric-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            Potential savings available
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CloudWatch Alarms Section -->
+                <div class="card clickable" style="margin-bottom: 24px; cursor: pointer;" onclick="window.location.href='/cloudwatch'">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <i class="fas fa-exclamation-triangle" style="margin-right: 8px; color: var(--warning-yellow);"></i>
+                                CloudWatch Alarms Overview
+                            </h3>
+                            <p class="card-subtitle">Current alarm states and critical alerts - Click to view details</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="event.stopPropagation(); syncCloudWatchData()" class="btn btn-secondary" id="syncCloudWatchBtn">
+                                <i class="fas fa-sync-alt"></i>
+                                Sync Alarms
+                            </button>
+                            <div class="dropdown" style="position: relative;">
+                                <button onclick="event.stopPropagation(); toggleCloudWatchExportDropdown()" class="btn btn-success">
+                                    <i class="fas fa-download"></i>
+                                    Export Alarms
+                                </button>
+                                <div id="cloudWatchExportDropdown" class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 1000; min-width: 180px;">
+                                    <button onclick="exportCloudWatchData('csv')" class="dropdown-item">
+                                        <i class="fas fa-file-csv"></i>
+                                        Export CSV
+                                    </button>
+                                    <button onclick="exportCloudWatchData('json')" class="dropdown-item">
+                                        <i class="fas fa-file-code"></i>
+                                        Export JSON
+                                    </button>
+                                    <button onclick="exportCloudWatchData('excel')" class="dropdown-item">
+                                        <i class="fas fa-file-excel"></i>
+                                        Export Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-grid">
+                            <div class="metric-card" style="background: linear-gradient(135deg, #ff7675 0%, #e17055 100%); color: white;">
+                                <div class="metric-value" id="alarmingAlarms">-</div>
+                                <div class="metric-label">Alarming</div>
+                                <small style="opacity: 0.8;">Immediate attention required</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #00b894 0%, #00a085 100%); color: white;">
+                                <div class="metric-value" id="okAlarms">-</div>
+                                <div class="metric-label">OK</div>
+                                <small style="opacity: 0.8;">Systems normal</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%); color: white;">
+                                <div class="metric-value" id="insufficientDataAlarms">-</div>
+                                <div class="metric-label">Insufficient Data</div>
+                                <small style="opacity: 0.8;">Data collection issues</small>
+                            </div>
+                            <div class="metric-card" style="background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); color: white;">
+                                <div class="metric-value" id="criticalAlarms">-</div>
+                                <div class="metric-label">Critical</div>
+                                <small style="opacity: 0.8;">High priority alerts</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Recent Alarms Table -->
+                        <div style="margin-top: 20px;">
+                            <h4 style="margin-bottom: 16px; color: var(--text-primary);">Recent Alarm Activity</h4>
+                            <div id="recentAlarmsTable" class="loading">Select an account to view recent alarms</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts and Tables Row -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
+                    <!-- Cost Trend Chart -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Cost Trend</h3>
+                                <p class="card-subtitle">Monthly spending over time</p>
+                            </div>
+                            <div class="dropdown" style="position: relative;">
+                                <button onclick="toggleCostTrendExportDropdown()" class="btn btn-success" style="font-size: 14px; padding: 8px 16px;">
+                                    <i class="fas fa-download"></i>
+                                    Export
+                                </button>
+                                <div id="costTrendExportDropdown" class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 1000; min-width: 150px;">
+                                    <button onclick="exportCostTrendData('csv')" class="dropdown-item">
+                                        <i class="fas fa-file-csv"></i>
+                                        Export CSV
+                                    </button>
+                                    <button onclick="exportCostTrendData('json')" class="dropdown-item">
+                                        <i class="fas fa-file-code"></i>
+                                        Export JSON
+                                    </button>
+                                    <button onclick="exportCostTrendData('excel')" class="dropdown-item">
+                                        <i class="fas fa-file-excel"></i>
+                                        Export Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="costChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Services -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Top Services</h3>
+                                <p class="card-subtitle">By cost this month</p>
+                            </div>
+                            <div class="dropdown" style="position: relative;">
+                                <button onclick="toggleTopServicesExportDropdown()" class="btn btn-success" style="font-size: 14px; padding: 8px 16px;">
+                                    <i class="fas fa-download"></i>
+                                    Export
+                                </button>
+                                <div id="topServicesExportDropdown" class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 1000; min-width: 150px;">
+                                    <button onclick="exportTopServicesData('csv')" class="dropdown-item">
+                                        <i class="fas fa-file-csv"></i>
+                                        Export CSV
+                                    </button>
+                                    <button onclick="exportTopServicesData('json')" class="dropdown-item">
+                                        <i class="fas fa-file-code"></i>
+                                        Export JSON
+                                    </button>
+                                    <button onclick="exportTopServicesData('excel')" class="dropdown-item">
+                                        <i class="fas fa-file-excel"></i>
+                                        Export Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            {% if data.top_services %}
+                                {% for service in data.top_services %}
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <div>
+                                        <div style="font-weight: 600; color: var(--text-primary);">{{ service.name }}</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">{{ service.percentage }}% of total</div>
+                                    </div>
+                                    <div style="font-weight: 700; color: var(--text-primary);">${{ "%.2f"|format(service.cost) }}</div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">No service data available</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">Cost Optimization Recommendations</h3>
+                            <p class="card-subtitle">AI-powered suggestions to reduce your AWS costs</p>
+                        </div>
+                        <div class="dropdown" style="position: relative;">
+                            <button onclick="toggleRecommendationsExportDropdown()" class="btn btn-success" style="font-size: 14px; padding: 8px 16px;">
+                                <i class="fas fa-download"></i>
+                                Export
+                            </button>
+                            <div id="recommendationsExportDropdown" class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 1000; min-width: 150px;">
+                                <button onclick="exportRecommendationsData('csv')" class="dropdown-item">
+                                    <i class="fas fa-file-csv"></i>
+                                    Export CSV
+                                </button>
+                                <button onclick="exportRecommendationsData('json')" class="dropdown-item">
+                                    <i class="fas fa-file-code"></i>
+                                    Export JSON
+                                </button>
+                                <button onclick="exportRecommendationsData('excel')" class="dropdown-item">
+                                    <i class="fas fa-file-excel"></i>
+                                    Export Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="recommendations-grid">
+                            {% if data.recommendations %}
+                                {% for rec in data.recommendations %}
+                                <div class="recommendation-card {{ rec.priority }}-priority">
+                                    <div class="recommendation-header">
+                                        <h4 class="recommendation-title">{{ rec.title }}</h4>
+                                        <div class="recommendation-savings">${{ "%.2f"|format(rec.potential_savings) }}</div>
+                                    </div>
+                                    <p class="recommendation-description">{{ rec.description }}</p>
+                                    <div class="recommendation-actions">
+                                        <button class="btn btn-primary btn-sm">Apply</button>
+                                        <button class="btn btn-secondary btn-sm">Learn More</button>
+                                        <span class="priority-badge {{ rec.priority }}">{{ rec.priority }} priority</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">No recommendations available. Connect your AWS account to get started.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Cost Trend Chart
+        const ctx = document.getElementById('costChart').getContext('2d');
+        const costChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+                datasets: [{
+                    label: 'Monthly Cost ($)',
+                    data: {% if data.cost_trend %}{{ data.cost_trend | tojson }}{% else %}[0, 0, 0, 0, 0]{% endif %},
+                    borderColor: '#1a73e8',
+                    backgroundColor: 'rgba(26, 115, 232, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#1a73e8',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        hoverRadius: 8
+                    }
+                }
+            }
+        });
+
+        // Auto-refresh data every 5 minutes
+        setInterval(function() {
+            fetch('/api/cost-data')
+                .then(response => response.json())
+                .then(data => {
+                    costChart.data.labels = data.labels;
+                    costChart.data.datasets[0].data = data.data;
+                    costChart.update();
+                });
+        }, 300000);
+
+        // Global variables
+        let currentAccountId = null;
+        let alarmsData = [];
+        let costTrendData = [];
+        let topServicesData = [];
+        let recommendationsData = [];
+
+        // Load accounts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAccounts();
+        });
+
+        // Load accounts function
+        async function loadAccounts() {
+            try {
+                const response = await fetch('/integration/api/accounts');
+                const data = await response.json();
+                
+                const accountSelect = document.getElementById('accountSelect');
+                accountSelect.innerHTML = '<option value="">Select an account...</option>';
+                
+                if (data.success && data.accounts.length > 0) {
+                    data.accounts.forEach(account => {
+                        const option = document.createElement('option');
+                        option.value = account.id;
+                        option.textContent = `${account.name} (${account.account_id})`;
+                        accountSelect.appendChild(option);
+                    });
+                } else {
+                    accountSelect.innerHTML = '<option value="">No accounts available</option>';
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                document.getElementById('accountSelect').innerHTML = '<option value="">Error loading accounts</option>';
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            const accountId = document.getElementById('accountSelect').value;
+            const region = document.getElementById('regionSelect').value;
+            
+            if (!accountId) {
+                resetDashboardData();
+                return;
+            }
+            
+            currentAccountId = accountId;
+            
+            // Load CloudWatch alarms
+            await loadCloudWatchAlarms(accountId, region);
+        }
+
+        // Load CloudWatch alarms
+        async function loadCloudWatchAlarms(accountId, region) {
+            try {
+                const url = `/cloudwatch/api/accounts/${accountId}/alarms${region ? `?region=${region}` : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    alarmsData = data.alarms;
+                    updateCloudWatchMetrics(data.alarms);
+                    displayRecentAlarms(data.alarms);
+                } else {
+                    showAlert('Error loading CloudWatch alarms: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading CloudWatch alarms:', error);
+                showAlert('Error loading CloudWatch alarms', 'error');
+            }
+        }
+
+        // Update CloudWatch metrics
+        function updateCloudWatchMetrics(alarms) {
+            const totalAlarms = alarms.length;
+            const alarmingCount = alarms.filter(a => a.state === 'ALARM').length;
+            const okCount = alarms.filter(a => a.state === 'OK').length;
+            const insufficientDataCount = alarms.filter(a => a.state === 'INSUFFICIENT_DATA').length;
+            const criticalCount = alarms.filter(a => a.state === 'ALARM' && a.metricName.includes('CPU')).length;
+            
+            document.getElementById('totalAlarms').textContent = totalAlarms;
+            document.getElementById('alarmingAlarms').textContent = alarmingCount;
+            document.getElementById('okAlarms').textContent = okCount;
+            document.getElementById('insufficientDataAlarms').textContent = insufficientDataCount;
+            document.getElementById('criticalAlarms').textContent = criticalCount;
+        }
+
+        // Display recent alarms
+        function displayRecentAlarms(alarms) {
+            const container = document.getElementById('recentAlarmsTable');
+            
+            if (alarms.length === 0) {
+                container.innerHTML = '<p class="text-muted">No alarms found for this account.</p>';
+                return;
+            }
+            
+            // Sort by state updated timestamp (most recent first)
+            const sortedAlarms = alarms.sort((a, b) => new Date(b.stateUpdatedTimestamp) - new Date(a.stateUpdatedTimestamp));
+            const recentAlarms = sortedAlarms.slice(0, 5); // Show only 5 most recent
+            
+            let tableHtml = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Alarm Name</th>
+                            <th>State</th>
+                            <th>Metric</th>
+                            <th>Region</th>
+                            <th>Last Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            recentAlarms.forEach(alarm => {
+                const stateClass = alarm.state === 'ALARM' ? 'text-danger' : 
+                                 alarm.state === 'OK' ? 'text-success' : 'text-warning';
+                const lastUpdated = new Date(alarm.stateUpdatedTimestamp).toLocaleString();
+                
+                tableHtml += `
+                    <tr>
+                        <td>${alarm.alarmName}</td>
+                        <td><span class="${stateClass}">${alarm.state}</span></td>
+                        <td>${alarm.metricName}</td>
+                        <td>${alarm.region}</td>
+                        <td>${lastUpdated}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHtml += '</tbody></table>';
+            container.innerHTML = tableHtml;
+        }
+
+        // Reset dashboard data
+        function resetDashboardData() {
+            document.getElementById('totalAlarms').textContent = '-';
+            document.getElementById('alarmingAlarms').textContent = '-';
+            document.getElementById('okAlarms').textContent = '-';
+            document.getElementById('insufficientDataAlarms').textContent = '-';
+            document.getElementById('criticalAlarms').textContent = '-';
+            document.getElementById('recentAlarmsTable').innerHTML = 'Select an account to view recent alarms';
+        }
+
+        // Sync CloudWatch data
+        async function syncCloudWatchData() {
+            if (!currentAccountId) {
+                showAlert('Please select an account first', 'warning');
+                return;
+            }
+            
+            const syncBtn = document.getElementById('syncCloudWatchBtn');
+            const originalText = syncBtn.innerHTML;
+            syncBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+            syncBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`/cloudwatch/api/accounts/${currentAccountId}/sync`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    await loadDashboardData(); // Reload data
+                } else {
+                    showAlert('Error syncing data: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error syncing CloudWatch data:', error);
+                showAlert('Error syncing CloudWatch data', 'error');
+            } finally {
+                syncBtn.innerHTML = originalText;
+                syncBtn.disabled = false;
+            }
+        }
+
+        // Export functions
+        function toggleCloudWatchExportDropdown() {
+            const dropdown = document.getElementById('cloudWatchExportDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function toggleCostTrendExportDropdown() {
+            const dropdown = document.getElementById('costTrendExportDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function toggleTopServicesExportDropdown() {
+            const dropdown = document.getElementById('topServicesExportDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function toggleRecommendationsExportDropdown() {
+            const dropdown = document.getElementById('recommendationsExportDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Export CloudWatch data
+        function exportCloudWatchData(format) {
+            if (alarmsData.length === 0) {
+                showAlert('No alarm data to export', 'warning');
+                return;
+            }
+            
+            const filename = `cloudwatch-alarms-${new Date().toISOString().split('T')[0]}`;
+            exportData(alarmsData, filename, format);
+            toggleCloudWatchExportDropdown();
+        }
+
+        // Export cost trend data
+        function exportCostTrendData(format) {
+            const data = costChart.data.datasets[0].data.map((value, index) => ({
+                month: costChart.data.labels[index],
+                cost: value
+            }));
+            
+            const filename = `cost-trend-${new Date().toISOString().split('T')[0]}`;
+            exportData(data, filename, format);
+            toggleCostTrendExportDropdown();
+        }
+
+        // Export top services data
+        function exportTopServicesData(format) {
+            // This would normally come from the backend, using placeholder data
+            const data = [
+                { service: 'EC2', cost: 1250.00, percentage: 45 },
+                { service: 'RDS', cost: 680.00, percentage: 25 },
+                { service: 'S3', cost: 340.00, percentage: 12 },
+                { service: 'Lambda', cost: 180.00, percentage: 7 },
+                { service: 'CloudWatch', cost: 150.00, percentage: 5 }
+            ];
+            
+            const filename = `top-services-${new Date().toISOString().split('T')[0]}`;
+            exportData(data, filename, format);
+            toggleTopServicesExportDropdown();
+        }
+
+        // Export recommendations data
+        function exportRecommendationsData(format) {
+            // This would normally come from the backend, using placeholder data
+            const data = [
+                { title: 'Right-size EC2 instances', priority: 'high', potential_savings: 450.00 },
+                { title: 'Schedule dev instances', priority: 'medium', potential_savings: 280.00 },
+                { title: 'Optimize storage classes', priority: 'low', potential_savings: 120.00 }
+            ];
+            
+            const filename = `recommendations-${new Date().toISOString().split('T')[0]}`;
+            exportData(data, filename, format);
+            toggleRecommendationsExportDropdown();
+        }
+
+        // Generic export function
+        function exportData(data, filename, format) {
+            let content, mimeType, extension;
+            
+            switch (format) {
+                case 'csv':
+                    content = convertToCSV(data);
+                    mimeType = 'text/csv';
+                    extension = 'csv';
+                    break;
+                case 'json':
+                    content = JSON.stringify(data, null, 2);
+                    mimeType = 'application/json';
+                    extension = 'json';
+                    break;
+                case 'excel':
+                    // For Excel, we'll use CSV format as a simple alternative
+                    content = convertToCSV(data);
+                    mimeType = 'application/vnd.ms-excel';
+                    extension = 'xls';
+                    break;
+                default:
+                    showAlert('Unsupported export format', 'error');
+                    return;
+            }
+            
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showAlert(`Data exported as ${format.toUpperCase()}`, 'success');
+        }
+
+        // Convert data to CSV format
+        function convertToCSV(data) {
+            if (data.length === 0) return '';
+            
+            const headers = Object.keys(data[0]);
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => headers.map(header => {
+                    const value = row[header];
+                    return typeof value === 'string' ? `"${value}"` : value;
+                }).join(','))
+            ].join('\n');
+            
+            return csvContent;
+        }
+
+        // Show alert function
+        function showAlert(message, type = 'info') {
+            // Create alert element
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.style.position = 'fixed';
+            alert.style.top = '20px';
+            alert.style.right = '20px';
+            alert.style.zIndex = '9999';
+            alert.style.minWidth = '300px';
+            
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+            `;
+            
+            document.body.appendChild(alert);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+
+        // Navigation functions for metric cards
+        function scrollToRecommendations() {
+            document.querySelector('.recommendations-grid').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdowns = [
+                'cloudWatchExportDropdown',
+                'costTrendExportDropdown', 
+                'topServicesExportDropdown',
+                'recommendationsExportDropdown'
+            ];
+            
+            dropdowns.forEach(dropdownId => {
+                const dropdown = document.getElementById(dropdownId);
+                const button = dropdown.previousElementSibling;
+                
+                if (!button.contains(event.target) && !dropdown.contains(event.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

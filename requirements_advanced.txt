@@ -1,0 +1,6 @@
+# Core Libraries for Advanced Analysis
+networkx==3.2.1      # Graph analysis & dependency mapping
+hcl2==0.3.3          # Parse Terraform HCL files
+plotly==5.17.0       # Interactive charts
+checkov==3.1.34      # Security scanning
+boto3==1.34.34       # AWS cost estimation
